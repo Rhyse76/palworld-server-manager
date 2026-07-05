@@ -46,15 +46,18 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
 - `detect.rs` — auto-detect existing server installs (Steam libraries via registry +
   `libraryfolders.vdf`, and the app-managed folder); connect to one by setting install dir.
 - `rest.rs` — REST API client (players, metrics, announce, kick/ban, save, shutdown).
-- `rcon.rs` — RCON fallback client.
-- `backups.rs` — zip/restore `SaveGames`, scheduled backups.
+- `rest.rs` — REST API client (info, metrics, players, announce, kick/ban/unban, save,
+  shutdown) + `enable()` helper that flips `RESTAPIEnabled`/port/AdminPassword in config.
+- `rcon.rs` — RCON fallback client (not built yet).
+- `backups.rs` — zip/restore `SaveGames` (timestamped archives under app data dir).
 - `save/` — GVAS save parsing/editing (later).
 
 ## Roadmap (build in steps toward the full thing)
 
 - **M1 (done):** SteamCMD install/update → start/stop server → INI config editor;
   auto-detect/connect to existing installs; config preset import/export.
-- **M2:** Live dashboard via REST (players, metrics, broadcast, kick/ban) + backups.
+- **M2 (done):** Live dashboard via REST (info/metrics, players w/ kick/ban, broadcast,
+  save, graceful shutdown) + one-click "Enable REST API"; SaveGames backup/restore.
 - **M3:** Scheduled restarts/backups, multi-server profiles, log viewer.
 - **M4:** GVAS save editing (players, pals, inventory, guilds).
 - **M5:** Polish + packaged `.msi`/`.exe` release, auto-update.

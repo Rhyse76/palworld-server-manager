@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { api, type StatusInfo } from "./api";
 import ServerPage from "./components/ServerPage";
 import ConfigPage from "./components/ConfigPage";
+import DashboardPage from "./components/DashboardPage";
+import BackupsPage from "./components/BackupsPage";
 
-type Page = "server" | "config";
+type Page = "server" | "dashboard" | "config" | "backups";
 
 interface Toast {
   msg: string;
@@ -48,8 +50,17 @@ export default function App() {
           <button className={page === "server" ? "active" : ""} onClick={() => setPage("server")}>
             🖥️ Server
           </button>
+          <button
+            className={page === "dashboard" ? "active" : ""}
+            onClick={() => setPage("dashboard")}
+          >
+            📊 Dashboard
+          </button>
           <button className={page === "config" ? "active" : ""} onClick={() => setPage("config")}>
             ⚙️ Configuration
+          </button>
+          <button className={page === "backups" ? "active" : ""} onClick={() => setPage("backups")}>
+            💾 Backups
           </button>
         </nav>
         <div className="sidebar-footer">
@@ -61,7 +72,9 @@ export default function App() {
 
       <main className="content">
         {page === "server" && <ServerPage status={status} refresh={refresh} notify={notify} />}
+        {page === "dashboard" && <DashboardPage notify={notify} />}
         {page === "config" && <ConfigPage notify={notify} />}
+        {page === "backups" && <BackupsPage notify={notify} />}
       </main>
 
       {toast && <div className={`toast ${toast.error ? "error" : ""}`}>{toast.msg}</div>}

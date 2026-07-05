@@ -36,6 +36,25 @@ fn config_path(install_dir: &Path) -> PathBuf {
     install_dir.join(CONFIG_REL)
 }
 
+/// Find a field's logical value by key.
+pub fn find(fields: &[ConfigField], key: &str) -> Option<String> {
+    fields.iter().find(|f| f.key == key).map(|f| f.value.clone())
+}
+
+/// Insert or update a field, preserving position when it already exists.
+pub fn upsert(fields: &mut Vec<ConfigField>, key: &str, value: &str, kind: &str) {
+    if let Some(f) = fields.iter_mut().find(|f| f.key == key) {
+        f.value = value.to_string();
+        f.kind = kind.to_string();
+    } else {
+        fields.push(ConfigField {
+            key: key.to_string(),
+            value: value.to_string(),
+            kind: kind.to_string(),
+        });
+    }
+}
+
 /// Locate the best config source: the live config if present, else the shipped
 /// defaults so users can edit settings before the first launch.
 fn source_ini(install_dir: &Path) -> Option<PathBuf> {

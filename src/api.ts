@@ -26,6 +26,45 @@ export interface DetectedInstall {
   hasConfig: boolean;
 }
 
+export interface ServerInfo {
+  version: string;
+  servername: string;
+  description: string;
+}
+
+export interface Metrics {
+  serverfps: number;
+  currentplayernum: number;
+  maxplayernum: number;
+  serverframetime: number;
+  uptime: number;
+}
+
+export interface Overview {
+  info: ServerInfo;
+  metrics: Metrics;
+}
+
+export interface Player {
+  name: string;
+  playerId: string;
+  userId: string;
+  ping: number;
+  level: number;
+}
+
+export interface BackupInfo {
+  name: string;
+  sizeBytes: number;
+  modified: number;
+}
+
+export interface EnableResult {
+  port: number;
+  adminPassword: string;
+  generatedPassword: boolean;
+}
+
 export const api = {
   getStatus: () => invoke<StatusInfo>("get_status"),
   getAppConfig: () => invoke<AppConfig>("get_app_config"),
@@ -39,6 +78,25 @@ export const api = {
   exportConfig: (fields: ConfigField[], dest: string) =>
     invoke<void>("export_config", { fields, dest }),
   importConfig: (path: string) => invoke<ConfigField[]>("import_config", { path }),
+
+  // REST live dashboard
+  restOverview: () => invoke<Overview>("rest_overview"),
+  restPlayers: () => invoke<Player[]>("rest_players"),
+  restAnnounce: (message: string) => invoke<void>("rest_announce", { message }),
+  restKick: (userid: string, message: string) => invoke<void>("rest_kick", { userid, message }),
+  restBan: (userid: string, message: string) => invoke<void>("rest_ban", { userid, message }),
+  restUnban: (userid: string) => invoke<void>("rest_unban", { userid }),
+  restSave: () => invoke<void>("rest_save"),
+  restShutdown: (seconds: number, message: string) =>
+    invoke<void>("rest_shutdown", { seconds, message }),
+  enableRestApi: () => invoke<EnableResult>("enable_rest_api"),
+
+  // Backups
+  backupCreate: () => invoke<string>("backup_create"),
+  backupList: () => invoke<BackupInfo[]>("backup_list"),
+  backupRestore: (name: string) => invoke<void>("backup_restore", { name }),
+  backupDelete: (name: string) => invoke<void>("backup_delete", { name }),
+  backupOpenFolder: () => invoke<void>("backup_open_folder"),
 };
 
 export function onInstallLog(cb: (line: string) => void): Promise<UnlistenFn> {

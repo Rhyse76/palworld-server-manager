@@ -1,5 +1,7 @@
+mod backups;
 mod config;
 mod detect;
+mod rest;
 mod server;
 mod settings;
 mod steamcmd;
@@ -96,6 +98,91 @@ fn import_config(path: String) -> Result<Vec<config::ConfigField>, String> {
     config::import_file(std::path::Path::new(&path))
 }
 
+// ---- REST API (live dashboard) ----
+
+#[tauri::command]
+async fn rest_overview(app: AppHandle) -> Result<rest::Overview, String> {
+    let dir = settings::install_dir(&app)?;
+    rest::overview(&dir).await
+}
+
+#[tauri::command]
+async fn rest_players(app: AppHandle) -> Result<Vec<rest::Player>, String> {
+    let dir = settings::install_dir(&app)?;
+    rest::players(&dir).await
+}
+
+#[tauri::command]
+async fn rest_announce(app: AppHandle, message: String) -> Result<(), String> {
+    let dir = settings::install_dir(&app)?;
+    rest::announce(&dir, &message).await
+}
+
+#[tauri::command]
+async fn rest_kick(app: AppHandle, userid: String, message: String) -> Result<(), String> {
+    let dir = settings::install_dir(&app)?;
+    rest::kick(&dir, &userid, &message).await
+}
+
+#[tauri::command]
+async fn rest_ban(app: AppHandle, userid: String, message: String) -> Result<(), String> {
+    let dir = settings::install_dir(&app)?;
+    rest::ban(&dir, &userid, &message).await
+}
+
+#[tauri::command]
+async fn rest_unban(app: AppHandle, userid: String) -> Result<(), String> {
+    let dir = settings::install_dir(&app)?;
+    rest::unban(&dir, &userid).await
+}
+
+#[tauri::command]
+async fn rest_save(app: AppHandle) -> Result<(), String> {
+    let dir = settings::install_dir(&app)?;
+    rest::save(&dir).await
+}
+
+#[tauri::command]
+async fn rest_shutdown(app: AppHandle, seconds: i64, message: String) -> Result<(), String> {
+    let dir = settings::install_dir(&app)?;
+    rest::shutdown(&dir, seconds, &message).await
+}
+
+#[tauri::command]
+fn enable_rest_api(app: AppHandle) -> Result<rest::EnableResult, String> {
+    let dir = settings::install_dir(&app)?;
+    rest::enable(&dir)
+}
+
+// ---- Backups ----
+
+#[tauri::command]
+fn backup_create(app: AppHandle) -> Result<String, String> {
+    let dir = settings::install_dir(&app)?;
+    backups::create(&app, &dir)
+}
+
+#[tauri::command]
+fn backup_list(app: AppHandle) -> Result<Vec<backups::BackupInfo>, String> {
+    backups::list(&app)
+}
+
+#[tauri::command]
+fn backup_restore(app: AppHandle, name: String) -> Result<(), String> {
+    let dir = settings::install_dir(&app)?;
+    backups::restore(&app, &dir, &name)
+}
+
+#[tauri::command]
+fn backup_delete(app: AppHandle, name: String) -> Result<(), String> {
+    backups::delete(&app, &name)
+}
+
+#[tauri::command]
+fn backup_open_folder(app: AppHandle) -> Result<(), String> {
+    backups::open_folder(&app)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -113,6 +200,20 @@ pub fn run() {
             detect_installs,
             export_config,
             import_config,
+            rest_overview,
+            rest_players,
+            rest_announce,
+            rest_kick,
+            rest_ban,
+            rest_unban,
+            rest_save,
+            rest_shutdown,
+            enable_rest_api,
+            backup_create,
+            backup_list,
+            backup_restore,
+            backup_delete,
+            backup_open_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
