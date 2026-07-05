@@ -40,7 +40,10 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
 ## Planned backend module layout (`src-tauri/src/`)
 
 - `steamcmd.rs` — download/bootstrap SteamCMD, install/update server, stream progress.
-- `server.rs` — start/stop/restart `PalServer.exe`, status, log tailing, auto-restart.
+- `server.rs` — start (`PalServer.exe` + `CREATE_NEW_CONSOLE`) / stop (taskkill `PalServer*`)
+  / status (tasklist `PalServer*` → "Shipping").
+- `automation.rs` — 60s scheduler: scheduled backups/restarts + crash watchdog; `logs.rs`
+  activity log.
 - `config.rs` — parse ↔ write `PalWorldSettings.ini` `OptionSettings` blob (typed model);
   JSON preset import/export + import from any `PalWorldSettings.ini`.
 - `detect.rs` — auto-detect existing server installs (Steam libraries via registry +
@@ -58,8 +61,9 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
   auto-detect/connect to existing installs; config preset import/export.
 - **M2 (done):** Live dashboard via REST (info/metrics, players w/ kick/ban, broadcast,
   save, graceful shutdown) + one-click "Enable REST API"; SaveGames backup/restore.
-- **M3 (done):** Automation (auto-restart + scheduled backups w/ pruning, 60s scheduler
-  thread), live server log viewer, multi-server profiles (config migrated to profiles).
+- **M3 (done):** Automation (scheduled restarts + scheduled backups w/ pruning + **crash
+  watchdog**, 60s scheduler thread), **manager activity log**, multi-server profiles (config
+  migrated to profiles). Server launched via `PalServer.exe` in its own console (stable).
 - **M4:** GVAS save editing (players, pals, inventory, guilds).
 - **M5:** Polish + packaged `.msi`/`.exe` release, auto-update.
 
@@ -84,10 +88,19 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
   `/players` {players:[]}; POST `/announce` {message}, `/save` {}; bad auth → 401.
 - REST comes up within a few seconds of launch once `RESTAPIEnabled=True` + `AdminPassword` set.
 - **No usable server log file**: Palworld writes no `Pal/Saved/Logs/Pal.log`; only Steam/EOS
-  SDK logs exist under `Pal/Binaries/Win64/logs/`. The launcher `PalServer.exe` also produces
-  no stdout. The **console build `PalServer-Win64-Shipping-Cmd.exe` DOES write the game log to
-  stdout** — so `server::start` launches that exe directly and redirects stdout/stderr to
-  `<appdata>/logs/server.log`, which the Log viewer tails.
+  SDK logs exist under `Pal/Binaries/Win64/logs/`. The launcher `PalServer.exe` produces no
+  stdout, and the console build `...-Cmd.exe` emits only ~2 startup lines then nothing.
+- **Console build needs a real console**: launching `...-Cmd.exe` with stdout redirected to a
+  file (to capture logs) makes it crash with `LowLevelFatalError ... SECURE CRT: Invalid
+  parameter detected` (an Assert, seen live ~3 min in). So `server::start` instead launches
+  `PalServer.exe` with **`CREATE_NEW_CONSOLE`** (its own console) — the stable, standard method
+  (same as double-clicking). We do NOT capture game stdout.
+- **Logs → activity log**: because there's no good game log, `logs.rs` keeps a *manager*
+  activity log (`<appdata>/logs/activity.log`) of app actions (start/stop/install/REST/
+  automation/crash), persisted + streamed via `activity-log` events.
+- **Crash watchdog**: `SECURE CRT` crashes are a known, common Palworld server issue regardless
+  of launcher. `automation.rs` supervises servers the app started (`supervise` flag) and
+  auto-restarts them if they die unexpectedly (toggle: `autoRestartOnCrash`, default on).
 
 ## Environment notes
 
