@@ -58,7 +58,13 @@ export default function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">P</div>
+          <div className="brand-mark">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4.5" width="18" height="4" rx="1.4" fill="#08110d" />
+              <rect x="3" y="10" width="18" height="4" rx="1.4" fill="#08110d" />
+              <rect x="3" y="15.5" width="18" height="4" rx="1.4" fill="#08110d" />
+            </svg>
+          </div>
           <div className="brand-title">
             Palworld
             <small>Server Manager</small>
