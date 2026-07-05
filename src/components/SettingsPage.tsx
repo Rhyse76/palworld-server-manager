@@ -7,8 +7,7 @@ interface Props {
   notify: (msg: string, error?: boolean) => void;
 }
 
-// TODO: set this to your real donation page (Ko-fi / GitHub Sponsors / Buy Me a Coffee).
-const SUPPORT_URL = "https://ko-fi.com/";
+const SUPPORT_URL = "https://ko-fi.com/rhyse76";
 
 export default function SettingsPage({ config, refresh, notify }: Props) {
   const hide = config?.hideServerConsole ?? false;
