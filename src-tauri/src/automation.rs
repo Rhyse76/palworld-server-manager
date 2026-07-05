@@ -78,7 +78,7 @@ fn tick(app: &AppHandle) {
         if due {
             *state.last_restart.lock().unwrap() = t;
             if server::is_running() {
-                run_restart(app);
+                run_restart(app, cfg.hide_server_console);
             }
             return;
         }
@@ -91,7 +91,7 @@ fn tick(app: &AppHandle) {
             *state.last_restart.lock().unwrap() = t;
             logs::record(app, "Server stopped unexpectedly — auto-restarting…");
             if let Ok(dir) = settings::install_dir(app) {
-                match server::start(&dir) {
+                match server::start(&dir, cfg.hide_server_console) {
                     Ok(()) => logs::record(app, "Crash watchdog: server restarted."),
                     Err(e) => logs::record(app, &format!("Crash watchdog: restart failed: {e}")),
                 }
@@ -126,7 +126,7 @@ fn prune(app: &AppHandle, keep: u32) {
     }
 }
 
-fn run_restart(app: &AppHandle) {
+fn run_restart(app: &AppHandle, hide_console: bool) {
     let dir = match settings::install_dir(app) {
         Ok(d) => d,
         Err(_) => return,
@@ -152,7 +152,7 @@ fn run_restart(app: &AppHandle) {
     let _ = server::stop();
     std::thread::sleep(Duration::from_secs(2));
 
-    match server::start(&dir) {
+    match server::start(&dir, hide_console) {
         Ok(()) => logs::record(app, "Scheduled restart: server started."),
         Err(e) => logs::record(app, &format!("Scheduled restart: failed to start: {e}")),
     }

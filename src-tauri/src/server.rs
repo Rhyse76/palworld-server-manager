@@ -38,10 +38,12 @@ pub fn is_running() -> bool {
     }
 }
 
-/// Launch the dedicated server via the `PalServer.exe` launcher in its own console.
-/// This is the stable, standard launch method (equivalent to double-clicking the
-/// launcher); the console build needs a real console or it crashes on startup.
-pub fn start(install_dir: &Path) -> Result<(), String> {
+/// Launch the dedicated server via the `PalServer.exe` launcher. By default it
+/// gets its own visible console (the stable, standard method — equivalent to
+/// double-clicking the launcher). With `hide_console`, it runs with a console
+/// but no visible window (`CREATE_NO_WINDOW`), which still gives the console
+/// build the real console handle it needs to avoid crashing.
+pub fn start(install_dir: &Path, hide_console: bool) -> Result<(), String> {
     let exe = palserver_exe(install_dir);
     if !exe.exists() {
         return Err("Server is not installed yet.".into());
@@ -50,9 +52,14 @@ pub fn start(install_dir: &Path) -> Result<(), String> {
         return Err("Server is already running.".into());
     }
 
-    Command::new(&exe)
-        .current_dir(install_dir)
-        .new_console()
+    let mut command = Command::new(&exe);
+    command.current_dir(install_dir);
+    if hide_console {
+        command.hidden();
+    } else {
+        command.new_console();
+    }
+    command
         .spawn()
         .map_err(|e| format!("failed to start server: {e}"))?;
     Ok(())

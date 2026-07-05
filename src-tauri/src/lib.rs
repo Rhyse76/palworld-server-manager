@@ -66,7 +66,7 @@ async fn install_server(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn start_server(app: AppHandle) -> Result<(), String> {
     let install_dir = settings::install_dir(&app)?;
-    server::start(&install_dir)?;
+    server::start(&install_dir, settings::hide_console(&app))?;
     automation::set_supervise(&app, true);
     logs::record(&app, "Server started.");
     Ok(())
@@ -237,6 +237,11 @@ fn set_automation(app: AppHandle, automation: settings::Automation) -> Result<()
     settings::set_automation(&app, automation)
 }
 
+#[tauri::command]
+fn set_hide_console(app: AppHandle, hide: bool) -> Result<(), String> {
+    settings::set_hide_console(&app, hide)
+}
+
 // ---- Activity log ----
 
 #[tauri::command]
@@ -285,6 +290,7 @@ pub fn run() {
             rename_profile,
             delete_profile,
             set_automation,
+            set_hide_console,
             read_activity_log,
         ])
         .run(tauri::generate_context!())

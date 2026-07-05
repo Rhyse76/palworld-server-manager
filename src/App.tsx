@@ -6,8 +6,9 @@ import DashboardPage from "./components/DashboardPage";
 import BackupsPage from "./components/BackupsPage";
 import AutomationPage from "./components/AutomationPage";
 import LogsPage from "./components/LogsPage";
+import SettingsPage from "./components/SettingsPage";
 
-type Page = "server" | "dashboard" | "config" | "backups" | "automation" | "logs";
+type Page = "server" | "dashboard" | "config" | "backups" | "automation" | "logs" | "settings";
 
 interface Toast {
   msg: string;
@@ -21,6 +22,7 @@ const NAV: { id: Page; label: string }[] = [
   { id: "backups", label: "💾 Backups" },
   { id: "automation", label: "⏱️ Automation" },
   { id: "logs", label: "📜 Activity" },
+  { id: "settings", label: "🔧 Settings" },
 ];
 
 export default function App() {
@@ -97,6 +99,9 @@ export default function App() {
           <AutomationPage config={config} refresh={refresh} notify={notify} />
         )}
         {page === "logs" && <LogsPage />}
+        {page === "settings" && (
+          <SettingsPage config={config} refresh={refresh} notify={notify} />
+        )}
       </main>
 
       {toast && <div className={`toast ${toast.error ? "error" : ""}`}>{toast.msg}</div>}

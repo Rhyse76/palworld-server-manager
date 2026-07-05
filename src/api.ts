@@ -27,6 +27,7 @@ export interface AppConfig {
   activeProfile: string | null;
   profiles: ServerProfile[];
   automation: Automation;
+  hideServerConsole: boolean;
 }
 
 export type FieldKind = "bool" | "int" | "float" | "string" | "enum";
@@ -123,6 +124,7 @@ export const api = {
 
   // Automation
   setAutomation: (automation: Automation) => invoke<void>("set_automation", { automation }),
+  setHideConsole: (hide: boolean) => invoke<void>("set_hide_console", { hide }),
 
   // Activity log
   readActivityLog: () => invoke<string>("read_activity_log"),

@@ -51,6 +51,8 @@ pub struct AppConfig {
     pub active_profile: Option<String>,
     pub profiles: Vec<ServerProfile>,
     pub automation: Automation,
+    /// Hide the server's console window when launching (default: show it).
+    pub hide_server_console: bool,
     /// Legacy single-install field, migrated into a profile on first load.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install_dir: Option<String>,
@@ -215,6 +217,16 @@ pub fn set_automation(app: &AppHandle, automation: Automation) -> Result<(), Str
     let mut cfg = load(app);
     cfg.automation = automation;
     save(app, &cfg)
+}
+
+pub fn set_hide_console(app: &AppHandle, hide: bool) -> Result<(), String> {
+    let mut cfg = load(app);
+    cfg.hide_server_console = hide;
+    save(app, &cfg)
+}
+
+pub fn hide_console(app: &AppHandle) -> bool {
+    load(app).hide_server_console
 }
 
 fn new_id() -> String {
