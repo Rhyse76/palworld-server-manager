@@ -14,6 +14,7 @@ use std::process::{Command, Stdio};
 
 use tauri::{AppHandle, Emitter};
 
+use crate::server;
 use crate::settings;
 use crate::util::CommandExt;
 
@@ -61,9 +62,35 @@ pub async fn ensure_steamcmd(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(exe)
 }
 
-/// Run `app_update` for the Palworld server, streaming output as events.
-/// This blocks until SteamCMD exits, so callers run it off the async runtime.
+/// Install/update the server, retrying once to absorb SteamCMD's first-run
+/// self-update: on a fresh SteamCMD the first invocation only updates the Steam
+/// client, relaunches, and exits (code 7) without running `app_update`. Running it
+/// again then downloads the server. We also treat "server ended up installed" as
+/// success even if SteamCMD reports a non-zero exit.
 pub fn run_update(app: &AppHandle, steamcmd: &PathBuf, install_dir: &PathBuf) -> Result<(), String> {
+    let mut last_err = String::new();
+    for attempt in 1..=2 {
+        if attempt == 2 {
+            let _ = app.emit(
+                "install-log",
+                "SteamCMD updated itself — running the install again...",
+            );
+        }
+        match run_once(app, steamcmd, install_dir) {
+            Ok(()) => return Ok(()),
+            Err(e) => last_err = e,
+        }
+        // If the server binary is present, the install actually succeeded.
+        if server::is_installed(install_dir) {
+            return Ok(());
+        }
+    }
+    Err(last_err)
+}
+
+/// A single SteamCMD `app_update` run, streaming output as events. Blocks until
+/// SteamCMD exits, so callers run it off the async runtime.
+fn run_once(app: &AppHandle, steamcmd: &PathBuf, install_dir: &PathBuf) -> Result<(), String> {
     fs::create_dir_all(install_dir).map_err(|e| e.to_string())?;
 
     let mut child = Command::new(steamcmd)
