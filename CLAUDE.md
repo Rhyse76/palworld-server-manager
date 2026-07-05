@@ -41,7 +41,10 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
 
 - `steamcmd.rs` — download/bootstrap SteamCMD, install/update server, stream progress.
 - `server.rs` — start/stop/restart `PalServer.exe`, status, log tailing, auto-restart.
-- `config.rs` — parse ↔ write `PalWorldSettings.ini` `OptionSettings` blob (typed model).
+- `config.rs` — parse ↔ write `PalWorldSettings.ini` `OptionSettings` blob (typed model);
+  JSON preset import/export + import from any `PalWorldSettings.ini`.
+- `detect.rs` — auto-detect existing server installs (Steam libraries via registry +
+  `libraryfolders.vdf`, and the app-managed folder); connect to one by setting install dir.
 - `rest.rs` — REST API client (players, metrics, announce, kick/ban, save, shutdown).
 - `rcon.rs` — RCON fallback client.
 - `backups.rs` — zip/restore `SaveGames`, scheduled backups.
@@ -49,7 +52,8 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
 
 ## Roadmap (build in steps toward the full thing)
 
-- **M1 (current):** SteamCMD install/update → start/stop server → INI config editor.
+- **M1 (done):** SteamCMD install/update → start/stop server → INI config editor;
+  auto-detect/connect to existing installs; config preset import/export.
 - **M2:** Live dashboard via REST (players, metrics, broadcast, kick/ban) + backups.
 - **M3:** Scheduled restarts/backups, multi-server profiles, log viewer.
 - **M4:** GVAS save editing (players, pals, inventory, guilds).

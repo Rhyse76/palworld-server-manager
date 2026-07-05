@@ -69,6 +69,31 @@ pub fn write(install_dir: &Path, fields: &[ConfigField]) -> Result<(), String> {
     fs::write(&path, contents).map_err(|e| e.to_string())
 }
 
+/// Write the given fields to a portable JSON preset file.
+pub fn export_json(fields: &[ConfigField], dest: &Path) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(fields).map_err(|e| e.to_string())?;
+    fs::write(dest, json).map_err(|e| e.to_string())
+}
+
+/// Load fields from either a JSON preset (exported by this app) or any
+/// `PalWorldSettings.ini` file. The result is returned for the user to review
+/// and save — it is not written to disk here.
+pub fn import_file(path: &Path) -> Result<Vec<ConfigField>, String> {
+    let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    if let Ok(fields) = serde_json::from_str::<Vec<ConfigField>>(&text) {
+        if !fields.is_empty() {
+            return Ok(fields);
+        }
+    }
+    let blob = extract_option_settings(&text)
+        .ok_or("File is neither a valid config preset (.json) nor a PalWorldSettings.ini")?;
+    let fields = parse_fields(&blob);
+    if fields.is_empty() {
+        return Err("No settings were found in that file.".into());
+    }
+    Ok(fields)
+}
+
 /// Pull the parenthesized body out of the `OptionSettings=(...)` line.
 fn extract_option_settings(text: &str) -> Option<String> {
     let line = text

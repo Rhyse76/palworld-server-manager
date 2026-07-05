@@ -1,0 +1,107 @@
+//! Auto-detect existing Palworld dedicated server installations so the user can
+//! connect to a server they already have instead of downloading a fresh copy.
+//!
+//! We look in:
+//!   - the app-managed default install dir,
+//!   - every Steam library (found via the registry + `libraryfolders.vdf`),
+//! and keep any folder that actually contains `PalServer.exe`.
+
+use std::collections::HashSet;
+use std::path::PathBuf;
+
+use serde::Serialize;
+use tauri::AppHandle;
+
+use crate::{server, settings};
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DetectedInstall {
+    pub path: String,
+    pub source: String,
+    pub has_config: bool,
+}
+
+pub fn detect(app: &AppHandle) -> Vec<DetectedInstall> {
+    let mut out = Vec::new();
+    let mut seen = HashSet::new();
+
+    if let Ok(dir) = settings::default_install_dir(app) {
+        consider(&mut out, &mut seen, dir, "App-managed");
+    }
+
+    for lib in steam_libraries() {
+        consider(
+            &mut out,
+            &mut seen,
+            lib.join("steamapps").join("common").join("PalServer"),
+            "Steam library",
+        );
+    }
+
+    out
+}
+
+fn consider(out: &mut Vec<DetectedInstall>, seen: &mut HashSet<String>, path: PathBuf, source: &str) {
+    if !server::is_installed(&path) {
+        return;
+    }
+    let key = path.to_string_lossy().to_lowercase();
+    if !seen.insert(key) {
+        return;
+    }
+    let has_config = path
+        .join("Pal")
+        .join("Saved")
+        .join("Config")
+        .join("WindowsServer")
+        .join("PalWorldSettings.ini")
+        .exists();
+    out.push(DetectedInstall {
+        path: path.to_string_lossy().to_string(),
+        source: source.to_string(),
+        has_config,
+    });
+}
+
+/// All Steam library roots, including the main Steam install.
+#[cfg(windows)]
+fn steam_libraries() -> Vec<PathBuf> {
+    let mut libs = Vec::new();
+    let Some(root) = steam_root() else {
+        return libs;
+    };
+
+    let vdf = root.join("steamapps").join("libraryfolders.vdf");
+    libs.push(root);
+
+    if let Ok(text) = std::fs::read_to_string(&vdf) {
+        for line in text.lines() {
+            let line = line.trim();
+            if let Some(rest) = line.strip_prefix("\"path\"") {
+                let path = rest.trim().trim_matches('"').replace("\\\\", "\\");
+                if !path.is_empty() {
+                    libs.push(PathBuf::from(path));
+                }
+            }
+        }
+    }
+    libs
+}
+
+#[cfg(windows)]
+fn steam_root() -> Option<PathBuf> {
+    use winreg::enums::HKEY_CURRENT_USER;
+    use winreg::RegKey;
+
+    let key = RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey("Software\\Valve\\Steam")
+        .ok()?;
+    let path: String = key.get_value("SteamPath").ok()?;
+    Some(PathBuf::from(path))
+}
+
+#[cfg(not(windows))]
+fn steam_libraries() -> Vec<PathBuf> {
+    Vec::new()
+}

@@ -1,4 +1,5 @@
 mod config;
+mod detect;
 mod server;
 mod settings;
 mod steamcmd;
@@ -77,6 +78,24 @@ fn write_config(app: AppHandle, fields: Vec<config::ConfigField>) -> Result<(), 
     config::write(&install_dir, &fields)
 }
 
+/// Scan for existing Palworld server installations on this machine.
+#[tauri::command]
+fn detect_installs(app: AppHandle) -> Vec<detect::DetectedInstall> {
+    detect::detect(&app)
+}
+
+/// Export the provided config fields to a portable `.json` preset.
+#[tauri::command]
+fn export_config(fields: Vec<config::ConfigField>, dest: String) -> Result<(), String> {
+    config::export_json(&fields, std::path::Path::new(&dest))
+}
+
+/// Load config fields from a `.json` preset or a `PalWorldSettings.ini` file.
+#[tauri::command]
+fn import_config(path: String) -> Result<Vec<config::ConfigField>, String> {
+    config::import_file(std::path::Path::new(&path))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -91,6 +110,9 @@ pub fn run() {
             stop_server,
             read_config,
             write_config,
+            detect_installs,
+            export_config,
+            import_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

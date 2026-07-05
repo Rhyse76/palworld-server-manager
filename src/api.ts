@@ -20,6 +20,12 @@ export interface ConfigField {
   kind: FieldKind;
 }
 
+export interface DetectedInstall {
+  path: string;
+  source: string;
+  hasConfig: boolean;
+}
+
 export const api = {
   getStatus: () => invoke<StatusInfo>("get_status"),
   getAppConfig: () => invoke<AppConfig>("get_app_config"),
@@ -29,6 +35,10 @@ export const api = {
   stopServer: () => invoke<void>("stop_server"),
   readConfig: () => invoke<ConfigField[]>("read_config"),
   writeConfig: (fields: ConfigField[]) => invoke<void>("write_config", { fields }),
+  detectInstalls: () => invoke<DetectedInstall[]>("detect_installs"),
+  exportConfig: (fields: ConfigField[], dest: string) =>
+    invoke<void>("export_config", { fields, dest }),
+  importConfig: (path: string) => invoke<ConfigField[]>("import_config", { path }),
 };
 
 export function onInstallLog(cb: (line: string) => void): Promise<UnlistenFn> {

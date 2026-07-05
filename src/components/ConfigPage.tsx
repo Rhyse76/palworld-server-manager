@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { api, type ConfigField } from "../api";
 
 interface Props {
@@ -44,6 +45,41 @@ export default function ConfigPage({ notify }: Props) {
     }
   }
 
+  async function exportPreset() {
+    if (!fields.length) return;
+    const dest = await saveDialog({
+      title: "Export config preset",
+      defaultPath: "palworld-config.json",
+      filters: [{ name: "Config preset", extensions: ["json"] }],
+    });
+    if (!dest) return;
+    try {
+      await api.exportConfig(fields, dest);
+      notify("Config preset exported.");
+    } catch (e) {
+      notify(String(e), true);
+    }
+  }
+
+  async function importPreset() {
+    const src = await open({
+      title: "Import config preset or PalWorldSettings.ini",
+      filters: [
+        { name: "Config", extensions: ["json", "ini"] },
+        { name: "All files", extensions: ["*"] },
+      ],
+    });
+    if (typeof src !== "string") return;
+    try {
+      const imported = await api.importConfig(src);
+      setFields(imported);
+      setError(null);
+      notify(`Imported ${imported.length} settings. Review, then Save to apply.`);
+    } catch (e) {
+      notify(String(e), true);
+    }
+  }
+
   const shown = useMemo(() => {
     const q = filter.trim().toLowerCase();
     return q ? fields.filter((f) => f.key.toLowerCase().includes(q)) : fields;
@@ -61,9 +97,12 @@ export default function ConfigPage({ notify }: Props) {
         <div className="card">
           <div className="empty">
             {error}
-            <div style={{ marginTop: 16 }}>
+            <div className="row" style={{ marginTop: 16, justifyContent: "center" }}>
               <button className="btn" onClick={load}>
                 Retry
+              </button>
+              <button className="btn" onClick={importPreset}>
+                Import preset…
               </button>
             </div>
           </div>
@@ -96,6 +135,12 @@ export default function ConfigPage({ notify }: Props) {
         />
         <button className="btn" onClick={load}>
           Reload
+        </button>
+        <button className="btn" onClick={importPreset}>
+          Import…
+        </button>
+        <button className="btn" onClick={exportPreset} disabled={!fields.length}>
+          Export…
         </button>
       </div>
 

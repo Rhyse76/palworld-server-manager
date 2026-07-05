@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { api, onInstallLog, onInstallProgress, type StatusInfo } from "../api";
+import {
+  api,
+  onInstallLog,
+  onInstallProgress,
+  type DetectedInstall,
+  type StatusInfo,
+} from "../api";
 
 interface Props {
   status: StatusInfo | null;
@@ -13,7 +19,30 @@ export default function ServerPage({ status, refresh, notify }: Props) {
   const [progress, setProgress] = useState<number | null>(null);
   const [installing, setInstalling] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [detected, setDetected] = useState<DetectedInstall[]>([]);
+  const [scanning, setScanning] = useState(false);
   const consoleRef = useRef<HTMLDivElement>(null);
+
+  async function scan() {
+    setScanning(true);
+    try {
+      setDetected(await api.detectInstalls());
+    } catch {
+      /* ignore */
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  useEffect(() => {
+    scan();
+  }, []);
+
+  async function use(path: string) {
+    await api.setInstallDir(path);
+    notify("Connected to existing server installation.");
+    refresh();
+  }
 
   useEffect(() => {
     const unlisteners = [
@@ -100,6 +129,57 @@ export default function ServerPage({ status, refresh, notify }: Props) {
             Change…
           </button>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="row spread" style={{ marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>Existing installations</h2>
+          <button className="btn" onClick={scan} disabled={scanning}>
+            {scanning ? "Scanning…" : "Rescan"}
+          </button>
+        </div>
+        {detected.length === 0 ? (
+          <p style={{ color: "var(--text-dim)", margin: 0 }}>
+            {scanning
+              ? "Searching Steam libraries and app folders…"
+              : "No existing Palworld server found. Use Install below, or pick a folder above."}
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {detected.map((d) => {
+              const current = d.path === status?.installDir;
+              return (
+                <div className="field" key={d.path}>
+                  <div style={{ overflow: "hidden" }}>
+                    <div className="row" style={{ gap: 8 }}>
+                      <span style={{ fontSize: 13 }}>{d.source}</span>
+                      {d.hasConfig && (
+                        <span className="pill ok" style={{ padding: "2px 8px" }}>
+                          <span className="dot" /> config
+                        </span>
+                      )}
+                      {current && (
+                        <span className="pill" style={{ padding: "2px 8px" }}>
+                          in use
+                        </span>
+                      )}
+                    </div>
+                    <div className="path" style={{ marginTop: 6, border: "none", padding: 0 }}>
+                      {d.path}
+                    </div>
+                  </div>
+                  <button
+                    className="btn primary"
+                    onClick={() => use(d.path)}
+                    disabled={current || installing}
+                  >
+                    {current ? "Connected" : "Use this"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="card">
