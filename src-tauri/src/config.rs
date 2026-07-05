@@ -55,27 +55,33 @@ pub fn upsert(fields: &mut Vec<ConfigField>, key: &str, value: &str, kind: &str)
     }
 }
 
-/// Locate the best config source: the live config if present, else the shipped
-/// defaults so users can edit settings before the first launch.
-fn source_ini(install_dir: &Path) -> Option<PathBuf> {
-    let live = config_path(install_dir);
-    if live.exists() {
-        return Some(live);
-    }
-    let default = install_dir.join(DEFAULT_CONFIG);
-    if default.exists() {
-        return Some(default);
-    }
-    None
+/// Parse the `OptionSettings` fields from a specific `.ini` file, if it exists
+/// and contains an `OptionSettings=(...)` line.
+fn parse_ini(path: &Path) -> Option<Vec<ConfigField>> {
+    let text = fs::read_to_string(path).ok()?;
+    let blob = extract_option_settings(&text)?;
+    Some(parse_fields(&blob))
 }
 
+/// Read the full settings list: start from the shipped defaults so every setting
+/// is shown, then overlay the live `PalWorldSettings.ini` values on top. This way
+/// a partial live config (e.g. one written by "Enable REST API") still shows the
+/// complete set with the user's overrides applied.
 pub fn read(install_dir: &Path) -> Result<Vec<ConfigField>, String> {
-    let path = source_ini(install_dir)
-        .ok_or("No config found yet. Install the server (and optionally run it once) first.")?;
-    let text = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let blob = extract_option_settings(&text)
-        .ok_or("Could not find an OptionSettings line in the config file.")?;
-    Ok(parse_fields(&blob))
+    let default_fields = parse_ini(&install_dir.join(DEFAULT_CONFIG));
+    let live_fields = parse_ini(&config_path(install_dir));
+
+    let mut fields = default_fields.unwrap_or_default();
+    if let Some(live) = live_fields {
+        for lf in live {
+            upsert(&mut fields, &lf.key, &lf.value, &lf.kind);
+        }
+    }
+
+    if fields.is_empty() {
+        return Err("No config found yet. Install the server first.".into());
+    }
+    Ok(fields)
 }
 
 pub fn write(install_dir: &Path, fields: &[ConfigField]) -> Result<(), String> {
