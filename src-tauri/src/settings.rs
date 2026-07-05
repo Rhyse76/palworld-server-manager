@@ -28,6 +28,8 @@ pub struct Automation {
     pub auto_backup_enabled: bool,
     pub backup_interval_hours: f64,
     pub keep_backups: u32,
+    /// Restart the server automatically if it dies unexpectedly (crash watchdog).
+    pub auto_restart_on_crash: bool,
 }
 
 impl Default for Automation {
@@ -38,6 +40,7 @@ impl Default for Automation {
             auto_backup_enabled: false,
             backup_interval_hours: 2.0,
             keep_backups: 10,
+            auto_restart_on_crash: true,
         }
     }
 }

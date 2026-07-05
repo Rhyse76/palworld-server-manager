@@ -52,23 +52,33 @@ async fn install_server(app: AppHandle) -> Result<(), String> {
     let steamcmd = steamcmd::ensure_steamcmd(&app).await?;
     let install_dir = settings::install_dir(&app)?;
     let app_for_task = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
+    let result = tauri::async_runtime::spawn_blocking(move || {
         steamcmd::run_update(&app_for_task, &steamcmd, &install_dir)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?;
+    if result.is_ok() {
+        logs::record(&app, "Server install/update finished.");
+    }
+    result
 }
 
 #[tauri::command]
 fn start_server(app: AppHandle) -> Result<(), String> {
     let install_dir = settings::install_dir(&app)?;
-    let log = logs::log_path(&app)?;
-    server::start(&install_dir, &log)
+    server::start(&install_dir)?;
+    automation::set_supervise(&app, true);
+    logs::record(&app, "Server started.");
+    Ok(())
 }
 
 #[tauri::command]
-fn stop_server() -> Result<(), String> {
-    server::stop()
+fn stop_server(app: AppHandle) -> Result<(), String> {
+    // Mark intent first so the crash watchdog doesn't fight the stop.
+    automation::set_supervise(&app, false);
+    server::stop()?;
+    logs::record(&app, "Server stopped by user.");
+    Ok(())
 }
 
 #[tauri::command]
@@ -118,19 +128,25 @@ async fn rest_players(app: AppHandle) -> Result<Vec<rest::Player>, String> {
 #[tauri::command]
 async fn rest_announce(app: AppHandle, message: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::announce(&dir, &message).await
+    rest::announce(&dir, &message).await?;
+    logs::record(&app, &format!("Broadcast: {message}"));
+    Ok(())
 }
 
 #[tauri::command]
 async fn rest_kick(app: AppHandle, userid: String, message: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::kick(&dir, &userid, &message).await
+    rest::kick(&dir, &userid, &message).await?;
+    logs::record(&app, &format!("Kicked {userid}."));
+    Ok(())
 }
 
 #[tauri::command]
 async fn rest_ban(app: AppHandle, userid: String, message: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::ban(&dir, &userid, &message).await
+    rest::ban(&dir, &userid, &message).await?;
+    logs::record(&app, &format!("Banned {userid}."));
+    Ok(())
 }
 
 #[tauri::command]
@@ -142,13 +158,19 @@ async fn rest_unban(app: AppHandle, userid: String) -> Result<(), String> {
 #[tauri::command]
 async fn rest_save(app: AppHandle) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::save(&dir).await
+    rest::save(&dir).await?;
+    logs::record(&app, "World saved.");
+    Ok(())
 }
 
 #[tauri::command]
 async fn rest_shutdown(app: AppHandle, seconds: i64, message: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::shutdown(&dir, seconds, &message).await
+    // A graceful shutdown from the UI is an intentional stop.
+    automation::set_supervise(&app, false);
+    rest::shutdown(&dir, seconds, &message).await?;
+    logs::record(&app, &format!("Graceful shutdown requested ({seconds}s)."));
+    Ok(())
 }
 
 #[tauri::command]
@@ -215,10 +237,10 @@ fn set_automation(app: AppHandle, automation: settings::Automation) -> Result<()
     settings::set_automation(&app, automation)
 }
 
-// ---- Logs ----
+// ---- Activity log ----
 
 #[tauri::command]
-fn read_server_log(app: AppHandle) -> Result<String, String> {
+fn read_activity_log(app: AppHandle) -> Result<String, String> {
     logs::read_tail(&app)
 }
 
@@ -263,7 +285,7 @@ pub fn run() {
             rename_profile,
             delete_profile,
             set_automation,
-            read_server_log,
+            read_activity_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

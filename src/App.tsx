@@ -20,7 +20,7 @@ const NAV: { id: Page; label: string }[] = [
   { id: "config", label: "⚙️ Configuration" },
   { id: "backups", label: "💾 Backups" },
   { id: "automation", label: "⏱️ Automation" },
-  { id: "logs", label: "📜 Server log" },
+  { id: "logs", label: "📜 Activity" },
 ];
 
 export default function App() {

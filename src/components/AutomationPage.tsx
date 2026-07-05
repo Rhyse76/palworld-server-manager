@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, onAutomationLog, type AppConfig, type Automation } from "../api";
+import { api, onActivityLog, type AppConfig, type Automation } from "../api";
 
 interface Props {
   config: AppConfig | null;
@@ -13,6 +13,7 @@ const DEFAULTS: Automation = {
   autoBackupEnabled: false,
   backupIntervalHours: 2,
   keepBackups: 10,
+  autoRestartOnCrash: true,
 };
 
 export default function AutomationPage({ config, refresh, notify }: Props) {
@@ -26,9 +27,7 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
   }, [config?.automation]);
 
   useEffect(() => {
-    const un = onAutomationLog((line) =>
-      setActivity((a) => [...a.slice(-200), `[${new Date().toLocaleTimeString()}] ${line}`]),
-    );
+    const un = onActivityLog((line) => setActivity((a) => [...a.slice(-200), line]));
     return () => {
       un.then((fn) => fn());
     };
@@ -61,6 +60,17 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
         <button className="btn primary" onClick={save} disabled={saving}>
           {saving ? "Saving…" : "Save settings"}
         </button>
+      </div>
+
+      <div className="card">
+        <div className="row spread">
+          <h2 style={{ margin: 0 }}>Crash recovery</h2>
+          <Toggle on={form.autoRestartOnCrash} onChange={(v) => set("autoRestartOnCrash", v)} />
+        </div>
+        <p style={{ color: "var(--text-dim)", marginBottom: 0 }}>
+          Watchdog: if the server dies unexpectedly (e.g. a game crash) while it should be
+          running, automatically start it again. Checked every 60 seconds.
+        </p>
       </div>
 
       <div className="card">

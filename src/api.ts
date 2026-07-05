@@ -20,6 +20,7 @@ export interface Automation {
   autoBackupEnabled: boolean;
   backupIntervalHours: number;
   keepBackups: number;
+  autoRestartOnCrash: boolean;
 }
 
 export interface AppConfig {
@@ -123,12 +124,12 @@ export const api = {
   // Automation
   setAutomation: (automation: Automation) => invoke<void>("set_automation", { automation }),
 
-  // Logs
-  readServerLog: () => invoke<string>("read_server_log"),
+  // Activity log
+  readActivityLog: () => invoke<string>("read_activity_log"),
 };
 
-export function onAutomationLog(cb: (line: string) => void): Promise<UnlistenFn> {
-  return listen<string>("automation-log", (e) => cb(e.payload));
+export function onActivityLog(cb: (line: string) => void): Promise<UnlistenFn> {
+  return listen<string>("activity-log", (e) => cb(e.payload));
 }
 
 export function onInstallLog(cb: (line: string) => void): Promise<UnlistenFn> {

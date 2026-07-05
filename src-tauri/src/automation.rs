@@ -1,24 +1,26 @@
-//! Background scheduler for auto-restart and scheduled backups.
+//! Background scheduler: scheduled backups, scheduled restarts, and a crash
+//! watchdog that auto-restarts the server when it dies unexpectedly.
 //!
-//! A single OS thread wakes every 60s and, based on the active profile's
-//! automation settings, creates backups (pruning old ones) and restarts the
-//! server on the configured intervals. Activity is emitted as `automation-log`
-//! events for the UI.
+//! A single OS thread wakes every 60s. It only supervises servers this app
+//! started (tracked by the `supervise` flag), so it won't fight a server the
+//! user deliberately stopped. Activity is written to the manager activity log.
 
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::{backups, logs, rest, server, settings};
 
 const TICK: Duration = Duration::from_secs(60);
 
-/// Tracks when each automated action last ran (unix seconds).
+/// Scheduler bookkeeping: when actions last ran, and whether we expect the
+/// server to be up (so the watchdog knows a crash from an intentional stop).
 #[derive(Default)]
 pub struct SchedulerState {
     last_backup: Mutex<u64>,
     last_restart: Mutex<u64>,
+    supervise: Mutex<bool>,
 }
 
 fn now() -> u64 {
@@ -28,14 +30,23 @@ fn now() -> u64 {
         .unwrap_or(0)
 }
 
-/// Start the scheduler thread. Timestamps start at "now" so nothing fires
-/// immediately on launch.
+/// Record whether the server *should* be running. Set true after the app starts
+/// it, false when the app stops/graceful-shuts it down.
+pub fn set_supervise(app: &AppHandle, value: bool) {
+    if let Some(state) = app.try_state::<SchedulerState>() {
+        *state.supervise.lock().unwrap() = value;
+    }
+}
+
+/// Start the scheduler thread. Timestamps start at "now" so scheduled actions
+/// don't fire immediately; supervise starts true if a server is already running.
 pub fn start(app: AppHandle) {
     {
         let state = app.state::<SchedulerState>();
         let t = now();
         *state.last_backup.lock().unwrap() = t;
         *state.last_restart.lock().unwrap() = t;
+        *state.supervise.lock().unwrap() = server::is_running();
     }
 
     std::thread::spawn(move || loop {
@@ -50,33 +61,43 @@ fn tick(app: &AppHandle) {
     let state = app.state::<SchedulerState>();
     let t = now();
 
+    // Scheduled backups.
     if a.auto_backup_enabled && a.backup_interval_hours > 0.0 {
-        let due = {
-            let last = *state.last_backup.lock().unwrap();
-            (t.saturating_sub(last)) as f64 >= a.backup_interval_hours * 3600.0
-        };
+        let due = (t.saturating_sub(*state.last_backup.lock().unwrap())) as f64
+            >= a.backup_interval_hours * 3600.0;
         if due {
             *state.last_backup.lock().unwrap() = t;
             run_backup(app, a.keep_backups);
         }
     }
 
+    // Scheduled restarts (only while running). Skip the watchdog this tick.
     if a.auto_restart_enabled && a.restart_interval_hours > 0.0 {
-        let due = {
-            let last = *state.last_restart.lock().unwrap();
-            (t.saturating_sub(last)) as f64 >= a.restart_interval_hours * 3600.0
-        };
+        let due = (t.saturating_sub(*state.last_restart.lock().unwrap())) as f64
+            >= a.restart_interval_hours * 3600.0;
         if due {
             *state.last_restart.lock().unwrap() = t;
             if server::is_running() {
                 run_restart(app);
             }
+            return;
         }
     }
-}
 
-fn log(app: &AppHandle, msg: impl Into<String>) {
-    let _ = app.emit("automation-log", msg.into());
+    // Crash watchdog: we expected it up, but it isn't.
+    if a.auto_restart_on_crash {
+        let supervise = *state.supervise.lock().unwrap();
+        if supervise && !server::is_running() {
+            *state.last_restart.lock().unwrap() = t;
+            logs::record(app, "Server stopped unexpectedly — auto-restarting…");
+            if let Ok(dir) = settings::install_dir(app) {
+                match server::start(&dir) {
+                    Ok(()) => logs::record(app, "Crash watchdog: server restarted."),
+                    Err(e) => logs::record(app, &format!("Crash watchdog: restart failed: {e}")),
+                }
+            }
+        }
+    }
 }
 
 fn run_backup(app: &AppHandle, keep: u32) {
@@ -86,10 +107,10 @@ fn run_backup(app: &AppHandle, keep: u32) {
     };
     match backups::create(app, &dir) {
         Ok(name) => {
-            log(app, format!("Auto-backup created: {name}"));
+            logs::record(app, &format!("Auto-backup created: {name}"));
             prune(app, keep);
         }
-        Err(e) => log(app, format!("Auto-backup failed: {e}")),
+        Err(e) => logs::record(app, &format!("Auto-backup failed: {e}")),
     }
 }
 
@@ -110,7 +131,7 @@ fn run_restart(app: &AppHandle) {
         Ok(d) => d,
         Err(_) => return,
     };
-    log(app, "Auto-restart: warning players and shutting down (30s)…");
+    logs::record(app, "Scheduled restart: warning players and shutting down (30s)…");
     let _ = tauri::async_runtime::block_on(rest::announce(
         &dir,
         "Server will restart in 30 seconds.",
@@ -131,15 +152,8 @@ fn run_restart(app: &AppHandle) {
     let _ = server::stop();
     std::thread::sleep(Duration::from_secs(2));
 
-    let log_path = match logs::log_path(app) {
-        Ok(p) => p,
-        Err(e) => {
-            log(app, format!("Auto-restart: {e}"));
-            return;
-        }
-    };
-    match server::start(&dir, &log_path) {
-        Ok(()) => log(app, "Auto-restart: server started."),
-        Err(e) => log(app, format!("Auto-restart: failed to start server: {e}")),
+    match server::start(&dir) {
+        Ok(()) => logs::record(app, "Scheduled restart: server started."),
+        Err(e) => logs::record(app, &format!("Scheduled restart: failed to start: {e}")),
     }
 }
