@@ -31,20 +31,41 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
 
-  const refresh = useCallback(async () => {
+  // Load status and config independently so a transient failure in one doesn't
+  // discard the other (previously a single Promise.all could drop a good status).
+  // Returns true only when both succeeded.
+  const refresh = useCallback(async (): Promise<boolean> => {
+    let ok = true;
     try {
-      const [s, c] = await Promise.all([api.getStatus(), api.getAppConfig()]);
-      setStatus(s);
-      setConfig(c);
+      setStatus(await api.getStatus());
     } catch {
-      /* backend not ready yet */
+      ok = false;
     }
+    try {
+      setConfig(await api.getAppConfig());
+    } catch {
+      ok = false;
+    }
+    return ok;
   }, []);
 
   useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, 4000);
-    return () => clearInterval(id);
+    // On a fast startup the Tauri IPC may not be ready for the very first calls,
+    // so retry quickly until both load, then settle into a slower poll cadence.
+    let stopped = false;
+    let timer: number;
+    let settled = false;
+    const tick = async () => {
+      const ok = await refresh();
+      if (ok) settled = true;
+      if (stopped) return;
+      timer = window.setTimeout(tick, settled ? 4000 : 400);
+    };
+    tick();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
   }, [refresh]);
 
   const notify = useCallback((msg: string, error = false) => {

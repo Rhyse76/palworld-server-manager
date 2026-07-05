@@ -25,19 +25,32 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
   const [scanning, setScanning] = useState(false);
   const consoleRef = useRef<HTMLDivElement>(null);
 
-  async function scan() {
+  async function scan(): Promise<boolean> {
     setScanning(true);
     try {
       setDetected(await api.detectInstalls());
+      return true;
     } catch {
-      /* ignore */
+      return false; // backend not ready yet
     } finally {
       setScanning(false);
     }
   }
 
+  // Retry the initial scan until it succeeds — on a fast startup the first call
+  // can land before the Tauri IPC is ready, and it must not give up silently.
   useEffect(() => {
-    scan();
+    let stopped = false;
+    let timer: number;
+    const attempt = async () => {
+      const ok = await scan();
+      if (!ok && !stopped) timer = window.setTimeout(attempt, 400);
+    };
+    attempt();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   async function use(path: string, source: string) {
