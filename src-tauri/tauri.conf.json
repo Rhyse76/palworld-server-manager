@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
+  "productName": "Palworld Server Manager",
   "version": "0.1.0",
-  "identifier": "com.rhyse.tauri-app",
+  "identifier": "com.palmanager.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
-        "width": 800,
-        "height": 600
+        "title": "Palworld Server Manager",
+        "width": 1160,
+        "height": 780,
+        "minWidth": 960,
+        "minHeight": 640
       }
     ],
     "security": {
