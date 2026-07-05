@@ -70,6 +70,19 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
   `src-tauri/target/release/bundle/`.
 - Cargo isn't always on PATH in a fresh shell; prefix with `export PATH="$HOME/.cargo/bin:$PATH"`.
 
+## Real-server gotchas (verified against server v0.7.3, 2026-07)
+
+- **SteamCMD first run** self-updates the Steam client, relaunches, and exits with
+  **code 7** *without* running `app_update`. Must run a second time. `steamcmd::run_update`
+  retries once and also treats "PalServer.exe now exists" as success.
+- **Shipping process name varies by version**: it runs as `PalServer-Win64-Shipping-Cmd.exe`
+  (not `...Shipping.exe`). Detect/stop by the `PalServer*` image prefix + "Shipping" —
+  never hardcode the exact shipping exe name.
+- **REST JSON contract** confirmed: `/info` {version,servername,description,worldguid},
+  `/metrics` {currentplayernum,serverfps,serverframetime,maxplayernum,uptime,days,basecampnum},
+  `/players` {players:[]}; POST `/announce` {message}, `/save` {}; bad auth → 401.
+- REST comes up within a few seconds of launch once `RESTAPIEnabled=True` + `AdminPassword` set.
+
 ## Environment notes
 
 - Rust (stable-msvc), MSVC Build Tools (VS18), Windows SDK, WebView2, Node 24 — all installed.
