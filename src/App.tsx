@@ -1,51 +1,70 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useCallback, useEffect, useState } from "react";
+import { api, type StatusInfo } from "./api";
+import ServerPage from "./components/ServerPage";
+import ConfigPage from "./components/ConfigPage";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+type Page = "server" | "config";
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
-
-  return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
-  );
+interface Toast {
+  msg: string;
+  error: boolean;
 }
 
-export default App;
+export default function App() {
+  const [page, setPage] = useState<Page>("server");
+  const [status, setStatus] = useState<StatusInfo | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setStatus(await api.getStatus());
+    } catch {
+      /* backend not ready yet */
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, 4000);
+    return () => clearInterval(id);
+  }, [refresh]);
+
+  const notify = useCallback((msg: string, error = false) => {
+    setToast({ msg, error });
+    setTimeout(() => setToast(null), 4000);
+  }, []);
+
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">P</div>
+          <div className="brand-title">
+            Palworld
+            <small>Server Manager</small>
+          </div>
+        </div>
+        <nav className="nav">
+          <button className={page === "server" ? "active" : ""} onClick={() => setPage("server")}>
+            🖥️ Server
+          </button>
+          <button className={page === "config" ? "active" : ""} onClick={() => setPage("config")}>
+            ⚙️ Configuration
+          </button>
+        </nav>
+        <div className="sidebar-footer">
+          {status?.running ? "● Server online" : "○ Server offline"}
+          <br />
+          v0.1.0 · M1
+        </div>
+      </aside>
+
+      <main className="content">
+        {page === "server" && <ServerPage status={status} refresh={refresh} notify={notify} />}
+        {page === "config" && <ConfigPage notify={notify} />}
+      </main>
+
+      {toast && <div className={`toast ${toast.error ? "error" : ""}`}>{toast.msg}</div>}
+    </div>
+  );
+}
