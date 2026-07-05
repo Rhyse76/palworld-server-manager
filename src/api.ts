@@ -8,8 +8,24 @@ export interface StatusInfo {
   steamcmdReady: boolean;
 }
 
+export interface ServerProfile {
+  id: string;
+  name: string;
+  installDir: string;
+}
+
+export interface Automation {
+  autoRestartEnabled: boolean;
+  restartIntervalHours: number;
+  autoBackupEnabled: boolean;
+  backupIntervalHours: number;
+  keepBackups: number;
+}
+
 export interface AppConfig {
-  installDir: string | null;
+  activeProfile: string | null;
+  profiles: ServerProfile[];
+  automation: Automation;
 }
 
 export type FieldKind = "bool" | "int" | "float" | "string" | "enum";
@@ -68,7 +84,7 @@ export interface EnableResult {
 export const api = {
   getStatus: () => invoke<StatusInfo>("get_status"),
   getAppConfig: () => invoke<AppConfig>("get_app_config"),
-  setInstallDir: (path: string | null) => invoke<void>("set_install_dir", { path }),
+  setInstallDir: (path: string) => invoke<void>("set_install_dir", { path }),
   installServer: () => invoke<void>("install_server"),
   startServer: () => invoke<void>("start_server"),
   stopServer: () => invoke<void>("stop_server"),
@@ -97,7 +113,23 @@ export const api = {
   backupRestore: (name: string) => invoke<void>("backup_restore", { name }),
   backupDelete: (name: string) => invoke<void>("backup_delete", { name }),
   backupOpenFolder: () => invoke<void>("backup_open_folder"),
+
+  // Profiles
+  addProfile: (name: string, path: string) => invoke<string>("add_profile", { name, path }),
+  setActiveProfile: (id: string) => invoke<void>("set_active_profile", { id }),
+  renameProfile: (id: string, name: string) => invoke<void>("rename_profile", { id, name }),
+  deleteProfile: (id: string) => invoke<void>("delete_profile", { id }),
+
+  // Automation
+  setAutomation: (automation: Automation) => invoke<void>("set_automation", { automation }),
+
+  // Logs
+  readServerLog: () => invoke<string>("read_server_log"),
 };
+
+export function onAutomationLog(cb: (line: string) => void): Promise<UnlistenFn> {
+  return listen<string>("automation-log", (e) => cb(e.payload));
+}
 
 export function onInstallLog(cb: (line: string) => void): Promise<UnlistenFn> {
   return listen<string>("install-log", (e) => cb(e.payload));

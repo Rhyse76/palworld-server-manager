@@ -1,20 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
 import {
   api,
   onInstallLog,
   onInstallProgress,
+  type AppConfig,
   type DetectedInstall,
   type StatusInfo,
 } from "../api";
+import ProfilesCard from "./ProfilesCard";
 
 interface Props {
   status: StatusInfo | null;
+  config: AppConfig | null;
   refresh: () => void;
   notify: (msg: string, error?: boolean) => void;
 }
 
-export default function ServerPage({ status, refresh, notify }: Props) {
+export default function ServerPage({ status, config, refresh, notify }: Props) {
   const [log, setLog] = useState<string[]>([]);
   const [progress, setProgress] = useState<number | null>(null);
   const [installing, setInstalling] = useState(false);
@@ -38,9 +40,9 @@ export default function ServerPage({ status, refresh, notify }: Props) {
     scan();
   }, []);
 
-  async function use(path: string) {
-    await api.setInstallDir(path);
-    notify("Connected to existing server installation.");
+  async function use(path: string, source: string) {
+    await api.addProfile(source, path);
+    notify("Connected — added as a server profile.");
     refresh();
   }
 
@@ -71,14 +73,6 @@ export default function ServerPage({ status, refresh, notify }: Props) {
     } finally {
       setInstalling(false);
       setProgress(null);
-      refresh();
-    }
-  }
-
-  async function changeDir() {
-    const picked = await open({ directory: true, title: "Choose server install folder" });
-    if (typeof picked === "string") {
-      await api.setInstallDir(picked);
       refresh();
     }
   }
@@ -119,17 +113,7 @@ export default function ServerPage({ status, refresh, notify }: Props) {
         </div>
       </div>
 
-      <div className="card">
-        <h2>Install location</h2>
-        <div className="row">
-          <span className="path" title={status?.installDir}>
-            {status?.installDir ?? "…"}
-          </span>
-          <button className="btn" onClick={changeDir} disabled={installing}>
-            Change…
-          </button>
-        </div>
-      </div>
+      <ProfilesCard config={config} refresh={refresh} notify={notify} />
 
       <div className="card">
         <div className="row spread" style={{ marginBottom: 12 }}>
@@ -170,7 +154,7 @@ export default function ServerPage({ status, refresh, notify }: Props) {
                   </div>
                   <button
                     className="btn primary"
-                    onClick={() => use(d.path)}
+                    onClick={() => use(d.path, d.source)}
                     disabled={current || installing}
                   >
                     {current ? "Connected" : "Use this"}

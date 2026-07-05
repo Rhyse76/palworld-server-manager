@@ -58,7 +58,8 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
   auto-detect/connect to existing installs; config preset import/export.
 - **M2 (done):** Live dashboard via REST (info/metrics, players w/ kick/ban, broadcast,
   save, graceful shutdown) + one-click "Enable REST API"; SaveGames backup/restore.
-- **M3:** Scheduled restarts/backups, multi-server profiles, log viewer.
+- **M3 (done):** Automation (auto-restart + scheduled backups w/ pruning, 60s scheduler
+  thread), live server log viewer, multi-server profiles (config migrated to profiles).
 - **M4:** GVAS save editing (players, pals, inventory, guilds).
 - **M5:** Polish + packaged `.msi`/`.exe` release, auto-update.
 
@@ -82,6 +83,11 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
   `/metrics` {currentplayernum,serverfps,serverframetime,maxplayernum,uptime,days,basecampnum},
   `/players` {players:[]}; POST `/announce` {message}, `/save` {}; bad auth → 401.
 - REST comes up within a few seconds of launch once `RESTAPIEnabled=True` + `AdminPassword` set.
+- **No usable server log file**: Palworld writes no `Pal/Saved/Logs/Pal.log`; only Steam/EOS
+  SDK logs exist under `Pal/Binaries/Win64/logs/`. The launcher `PalServer.exe` also produces
+  no stdout. The **console build `PalServer-Win64-Shipping-Cmd.exe` DOES write the game log to
+  stdout** — so `server::start` launches that exe directly and redirects stdout/stderr to
+  `<appdata>/logs/server.log`, which the Log viewer tails.
 
 ## Environment notes
 

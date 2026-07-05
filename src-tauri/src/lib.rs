@@ -1,6 +1,8 @@
+mod automation;
 mod backups;
 mod config;
 mod detect;
+mod logs;
 mod rest;
 mod server;
 mod settings;
@@ -36,11 +38,11 @@ fn get_app_config(app: AppHandle) -> settings::AppConfig {
     settings::load(&app)
 }
 
+/// Point the active profile at a different install folder.
 #[tauri::command]
-fn set_install_dir(app: AppHandle, path: Option<String>) -> Result<(), String> {
-    let mut cfg = settings::load(&app);
-    cfg.install_dir = path.filter(|s| !s.trim().is_empty());
-    settings::save(&app, &cfg)
+fn set_install_dir(app: AppHandle, path: String) -> Result<(), String> {
+    let profile = settings::active_profile(&app).ok_or("No active profile.")?;
+    settings::set_profile_dir(&app, &profile.id, &path)
 }
 
 /// Ensure SteamCMD exists, then install/update the Palworld server. Progress is
@@ -60,7 +62,8 @@ async fn install_server(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn start_server(app: AppHandle) -> Result<(), String> {
     let install_dir = settings::install_dir(&app)?;
-    server::start(&install_dir)
+    let log = logs::log_path(&app)?;
+    server::start(&install_dir, &log)
 }
 
 #[tauri::command]
@@ -183,11 +186,52 @@ fn backup_open_folder(app: AppHandle) -> Result<(), String> {
     backups::open_folder(&app)
 }
 
+// ---- Profiles ----
+
+#[tauri::command]
+fn add_profile(app: AppHandle, name: String, path: String) -> Result<String, String> {
+    settings::add_profile(&app, &name, &path)
+}
+
+#[tauri::command]
+fn set_active_profile(app: AppHandle, id: String) -> Result<(), String> {
+    settings::set_active(&app, &id)
+}
+
+#[tauri::command]
+fn rename_profile(app: AppHandle, id: String, name: String) -> Result<(), String> {
+    settings::rename_profile(&app, &id, &name)
+}
+
+#[tauri::command]
+fn delete_profile(app: AppHandle, id: String) -> Result<(), String> {
+    settings::delete_profile(&app, &id)
+}
+
+// ---- Automation ----
+
+#[tauri::command]
+fn set_automation(app: AppHandle, automation: settings::Automation) -> Result<(), String> {
+    settings::set_automation(&app, automation)
+}
+
+// ---- Logs ----
+
+#[tauri::command]
+fn read_server_log(app: AppHandle) -> Result<String, String> {
+    logs::read_tail(&app)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(automation::SchedulerState::default())
+        .setup(|app| {
+            automation::start(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_status,
             get_app_config,
@@ -214,6 +258,12 @@ pub fn run() {
             backup_restore,
             backup_delete,
             backup_open_folder,
+            add_profile,
+            set_active_profile,
+            rename_profile,
+            delete_profile,
+            set_automation,
+            read_server_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

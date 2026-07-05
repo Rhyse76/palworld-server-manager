@@ -437,6 +437,28 @@ button.btn:disabled {
   letter-spacing: 0.05em;
 }
 
+/* ---- Number inputs + inline labels ---- */
+input.num {
+  width: 90px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 14px;
+}
+input.num:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+input.num:disabled {
+  opacity: 0.45;
+}
+.row > label {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
 /* ---- Tables ---- */
 .table {
   width: 100%;
