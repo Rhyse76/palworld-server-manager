@@ -39,6 +39,54 @@ pub fn detect(app: &AppHandle) -> Vec<DetectedInstall> {
         );
     }
 
+    for dir in common_locations() {
+        consider(&mut out, &mut seen, dir, "Found on disk");
+    }
+
+    out
+}
+
+/// Fast, curated set of places a Palworld server is commonly installed manually,
+/// across every fixed drive plus the user's profile. Each candidate is just a
+/// file-existence check, so this stays near-instant (no recursive/full-disk scan).
+fn common_locations() -> Vec<PathBuf> {
+    // Folder layouts people commonly use, relative to a drive root.
+    const REL: &[&str] = &[
+        "PalworldServer",
+        "Palworld",
+        "PalServer",
+        "PalworldDedicatedServer",
+        "Games/PalworldServer",
+        "Games/Palworld",
+        "Servers/Palworld",
+        "SteamCMD/steamapps/common/PalServer",
+        "steamcmd/steamapps/common/PalServer",
+        "SteamLibrary/steamapps/common/PalServer",
+        "Steam/steamapps/common/PalServer",
+        "Program Files (x86)/Steam/steamapps/common/PalServer",
+    ];
+
+    let mut out = Vec::new();
+
+    // Every drive root that exists (C: through Z:).
+    for letter in b'C'..=b'Z' {
+        let root = PathBuf::from(format!("{}:\\", letter as char));
+        if !root.exists() {
+            continue;
+        }
+        for rel in REL {
+            out.push(root.join(rel));
+        }
+    }
+
+    // User-profile spots.
+    if let Ok(profile) = std::env::var("USERPROFILE") {
+        let p = PathBuf::from(profile);
+        for rel in ["PalworldServer", "Desktop/PalworldServer", "Documents/PalworldServer"] {
+            out.push(p.join(rel));
+        }
+    }
+
     out
 }
 
