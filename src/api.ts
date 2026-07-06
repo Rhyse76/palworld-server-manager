@@ -163,6 +163,13 @@ export const api = {
   // Activity log
   readActivityLog: () => invoke<string>("read_activity_log"),
 
+  // Mods
+  modsList: () => invoke<ModInfo[]>("mods_list"),
+  modSetEnabled: (name: string, enabled: boolean) =>
+    invoke<void>("mod_set_enabled", { name, enabled }),
+  modInstall: (path: string) => invoke<string>("mod_install", { path }),
+  modRemove: (name: string) => invoke<void>("mod_remove", { name }),
+
   // Saves (M4)
   inspectSave: () => invoke<SaveInfo>("inspect_save"),
 
@@ -177,6 +184,12 @@ export interface NetworkInfo {
   localIp: string;
   port: number;
   portListening: boolean;
+}
+
+export interface ModInfo {
+  name: string;
+  enabled: boolean;
+  sizeBytes: number;
 }
 
 export interface SaveInfo {

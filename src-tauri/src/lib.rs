@@ -4,6 +4,7 @@ mod config;
 mod detect;
 mod discord;
 mod logs;
+mod mods;
 mod network;
 mod rest;
 mod saves;
@@ -290,6 +291,26 @@ async fn check_update(app: AppHandle) -> Result<updates::UpdateStatus, String> {
 }
 
 #[tauri::command]
+fn mods_list(app: AppHandle) -> Result<Vec<mods::ModInfo>, String> {
+    mods::list(&settings::install_dir(&app)?)
+}
+
+#[tauri::command]
+fn mod_set_enabled(app: AppHandle, name: String, enabled: bool) -> Result<(), String> {
+    mods::set_enabled(&settings::install_dir(&app)?, &name, enabled)
+}
+
+#[tauri::command]
+fn mod_install(app: AppHandle, path: String) -> Result<String, String> {
+    mods::install(&settings::install_dir(&app)?, std::path::Path::new(&path))
+}
+
+#[tauri::command]
+fn mod_remove(app: AppHandle, name: String) -> Result<(), String> {
+    mods::remove(&settings::install_dir(&app)?, &name)
+}
+
+#[tauri::command]
 async fn inspect_save(app: AppHandle) -> Result<saves::SaveInfo, String> {
     let dir = settings::install_dir(&app)?;
     tauri::async_runtime::spawn_blocking(move || saves::inspect(&dir))
@@ -365,6 +386,10 @@ pub fn run() {
             network_forward,
             network_unforward,
             inspect_save,
+            mods_list,
+            mod_set_enabled,
+            mod_install,
+            mod_remove,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
