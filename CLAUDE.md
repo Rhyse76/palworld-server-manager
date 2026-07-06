@@ -113,6 +113,28 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
   of launcher. `automation.rs` supervises servers the app started (`supervise` flag) and
   auto-restarts them if they die unexpectedly (toggle: `autoRestartOnCrash`, default on).
 
+## Release process (IMPORTANT — keeps self-update working)
+
+The app self-updates via `tauri-plugin-updater`, reading
+`https://github.com/Rhyse76/palworld-server-manager/releases/latest/download/latest.json`.
+Every release MUST be **signed** and ship a matching `latest.json`, or self-update breaks.
+
+1. Bump version everywhere: `tauri.conf.json`, `src/App.tsx` footer, `SettingsPage` About,
+   `msix/*` (`0.x.0.0`), and the site (`softwareVersion` + `vX` label).
+2. **Signed build** (private key lives OUTSIDE the repo at `~/.tauri-keys/palworld-updater.key`,
+   empty password; pubkey is in `tauri.conf.json > plugins.updater`):
+   ```
+   TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri-keys/palworld-updater.key)" \
+   TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" npm run tauri build
+   ```
+   Produces `…-setup.exe` and `…-setup.exe.sig` under `target/release/bundle/nsis/`.
+3. Create the GitHub release `vX.Y.Z`, upload the installer as `PalworldServerManager-Setup.exe`,
+   and upload a `latest.json` asset:
+   `{"version":"X.Y.Z","notes":"…","pub_date":"<ISO>","platforms":{"windows-x86_64":
+   {"signature":"<contents of the .sig>","url":"https://github.com/Rhyse76/palworld-server-manager/releases/download/vX.Y.Z/PalworldServerManager-Setup.exe"}}}`
+   (Release body via `curl` must have NO unescaped double-quotes.)
+4. Users on ≥ v0.4.0 then get the update in-app.
+
 ## Environment notes
 
 - Rust (stable-msvc), MSVC Build Tools (VS18), Windows SDK, WebView2, Node 24 — all installed.
