@@ -75,6 +75,9 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
 - Differentiators: **connectivity/port-forward helper** (public IP + reachability + UPnP —
   the "friends can't connect" fix), off-site/cloud backups (paid-tier), metrics-history graphs,
   mod manager (local `.pak` + UE4SS/Lua), first-run setup wizard.
+- Small polish (do with next Connect-page change): when a non-public `configuredIp` (PublicIP)
+  is set, show a "Connecting over Tailscale/VPN? Port forwarding isn't needed" hint on the
+  Connect page.
 - Big bets: remote/web access (headless service + web UI), multi-game support (ARK/Valheim/etc.;
   user already runs ARK via `ark-panel`).
 
