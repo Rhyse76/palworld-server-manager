@@ -4,6 +4,7 @@ mod config;
 mod detect;
 mod discord;
 mod logs;
+mod network;
 mod rest;
 mod server;
 mod settings;
@@ -267,6 +268,23 @@ fn read_activity_log(app: AppHandle) -> Result<String, String> {
     logs::read_tail(&app)
 }
 
+// ---- Connectivity ----
+
+#[tauri::command]
+fn network_info(app: AppHandle) -> network::NetworkInfo {
+    network::info(&app)
+}
+
+#[tauri::command]
+fn network_forward(app: AppHandle) -> Result<String, String> {
+    network::forward(&app)
+}
+
+#[tauri::command]
+fn network_unforward(app: AppHandle) -> Result<String, String> {
+    network::unforward(&app)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -313,6 +331,9 @@ pub fn run() {
             set_discord,
             discord_test,
             read_activity_log,
+            network_info,
+            network_forward,
+            network_unforward,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

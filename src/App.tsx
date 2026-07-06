@@ -7,8 +7,17 @@ import BackupsPage from "./components/BackupsPage";
 import AutomationPage from "./components/AutomationPage";
 import LogsPage from "./components/LogsPage";
 import SettingsPage from "./components/SettingsPage";
+import ConnectPage from "./components/ConnectPage";
 
-type Page = "server" | "dashboard" | "config" | "backups" | "automation" | "logs" | "settings";
+type Page =
+  | "server"
+  | "dashboard"
+  | "connect"
+  | "config"
+  | "backups"
+  | "automation"
+  | "logs"
+  | "settings";
 
 interface Toast {
   msg: string;
@@ -18,6 +27,7 @@ interface Toast {
 const NAV: { id: Page; label: string }[] = [
   { id: "server", label: "🖥️ Server" },
   { id: "dashboard", label: "📊 Dashboard" },
+  { id: "connect", label: "🌐 Connect" },
   { id: "config", label: "⚙️ Configuration" },
   { id: "backups", label: "💾 Backups" },
   { id: "automation", label: "⏱️ Automation" },
@@ -120,6 +130,7 @@ export default function App() {
           <ServerPage status={status} config={config} refresh={refresh} notify={notify} />
         )}
         {page === "dashboard" && <DashboardPage notify={notify} />}
+        {page === "connect" && <ConnectPage notify={notify} />}
         {page === "config" && <ConfigPage notify={notify} />}
         {page === "backups" && <BackupsPage notify={notify} />}
         {page === "automation" && (

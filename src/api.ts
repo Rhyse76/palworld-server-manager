@@ -139,7 +139,19 @@ export const api = {
 
   // Activity log
   readActivityLog: () => invoke<string>("read_activity_log"),
+
+  // Connectivity
+  networkInfo: () => invoke<NetworkInfo>("network_info"),
+  networkForward: () => invoke<string>("network_forward"),
+  networkUnforward: () => invoke<string>("network_unforward"),
 };
+
+export interface NetworkInfo {
+  publicIp: string;
+  localIp: string;
+  port: number;
+  portListening: boolean;
+}
 
 export function onActivityLog(cb: (line: string) => void): Promise<UnlistenFn> {
   return listen<string>("activity-log", (e) => cb(e.payload));
