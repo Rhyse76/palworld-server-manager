@@ -148,12 +148,15 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
       <div className="card">
         <h2>About</h2>
         <p style={{ margin: "0 0 6px" }}>
-          <strong>Palworld Server Manager</strong> · v0.2.0
+          <strong>Palworld Server Manager</strong> · v0.3.0
         </p>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
           An unofficial, community-made tool for running a Palworld dedicated server. Not
           affiliated with or endorsed by Pocketpair, Inc. “Palworld” is a trademark of its
           respective owner.
+        </p>
+        <p style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 0 }}>
+          © 2026 PatchWork Labs, LLC.
         </p>
         <button className="btn primary" onClick={() => openUrl(SUPPORT_URL)}>
           ♥ Support development

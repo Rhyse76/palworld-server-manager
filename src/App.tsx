@@ -10,6 +10,7 @@ import SettingsPage from "./components/SettingsPage";
 import ConnectPage from "./components/ConnectPage";
 import SavesPage from "./components/SavesPage";
 import ModsPage from "./components/ModsPage";
+import FirstRunWizard from "./components/FirstRunWizard";
 
 type Page =
   | "server"
@@ -46,6 +47,7 @@ export default function App() {
   const [status, setStatus] = useState<StatusInfo | null>(null);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(true);
 
   // Load status and config independently so a transient failure in one doesn't
   // discard the other (previously a single Promise.all could drop a good status).
@@ -127,7 +129,7 @@ export default function App() {
           )}
           {status?.running ? "● Server online" : "○ Server offline"}
           <br />
-          v0.2.0
+          v0.3.0
         </div>
       </aside>
 
@@ -151,6 +153,15 @@ export default function App() {
       </main>
 
       {toast && <div className={`toast ${toast.error ? "error" : ""}`}>{toast.msg}</div>}
+
+      {wizardOpen && status && !status.installed && (
+        <FirstRunWizard
+          status={status}
+          refresh={refresh}
+          notify={notify}
+          onClose={() => setWizardOpen(false)}
+        />
+      )}
     </div>
   );
 }
