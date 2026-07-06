@@ -6,6 +6,7 @@ mod discord;
 mod logs;
 mod network;
 mod rest;
+mod saves;
 mod server;
 mod settings;
 mod steamcmd;
@@ -284,6 +285,14 @@ async fn check_update(app: AppHandle) -> Result<updates::UpdateStatus, String> {
 }
 
 #[tauri::command]
+async fn inspect_save(app: AppHandle) -> Result<saves::SaveInfo, String> {
+    let dir = settings::install_dir(&app)?;
+    tauri::async_runtime::spawn_blocking(move || saves::inspect(&dir))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 fn network_info(app: AppHandle) -> network::NetworkInfo {
     network::info(&app)
 }
@@ -349,6 +358,7 @@ pub fn run() {
             network_info,
             network_forward,
             network_unforward,
+            inspect_save,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

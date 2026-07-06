@@ -161,6 +161,9 @@ export const api = {
   // Activity log
   readActivityLog: () => invoke<string>("read_activity_log"),
 
+  // Saves (M4)
+  inspectSave: () => invoke<SaveInfo>("inspect_save"),
+
   // Connectivity
   networkInfo: () => invoke<NetworkInfo>("network_info"),
   networkForward: () => invoke<string>("network_forward"),
@@ -172,6 +175,14 @@ export interface NetworkInfo {
   localIp: string;
   port: number;
   portListening: boolean;
+}
+
+export interface SaveInfo {
+  path: string;
+  compressedSize: number;
+  decompressedSize: number;
+  isGvas: boolean;
+  saveType: number;
 }
 
 export function onActivityLog(cb: (line: string) => void): Promise<UnlistenFn> {

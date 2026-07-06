@@ -3888,6 +3888,7 @@ dependencies = [
 name = "tauri-app"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "igd",
  "reqwest 0.12.28",
  "serde",

@@ -8,6 +8,7 @@ import AutomationPage from "./components/AutomationPage";
 import LogsPage from "./components/LogsPage";
 import SettingsPage from "./components/SettingsPage";
 import ConnectPage from "./components/ConnectPage";
+import SavesPage from "./components/SavesPage";
 
 type Page =
   | "server"
@@ -16,6 +17,7 @@ type Page =
   | "config"
   | "backups"
   | "automation"
+  | "saves"
   | "logs"
   | "settings";
 
@@ -31,6 +33,7 @@ const NAV: { id: Page; label: string }[] = [
   { id: "config", label: "⚙️ Configuration" },
   { id: "backups", label: "💾 Backups" },
   { id: "automation", label: "⏱️ Automation" },
+  { id: "saves", label: "🧬 Save tools" },
   { id: "logs", label: "📜 Activity" },
   { id: "settings", label: "🔧 Settings" },
 ];
@@ -136,6 +139,7 @@ export default function App() {
         {page === "automation" && (
           <AutomationPage config={config} refresh={refresh} notify={notify} />
         )}
+        {page === "saves" && <SavesPage notify={notify} />}
         {page === "logs" && <LogsPage />}
         {page === "settings" && (
           <SettingsPage config={config} refresh={refresh} notify={notify} />
