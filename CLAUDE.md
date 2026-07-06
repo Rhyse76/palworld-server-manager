@@ -75,9 +75,15 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
 - Differentiators: **connectivity/port-forward helper** (public IP + reachability + UPnP —
   the "friends can't connect" fix), off-site/cloud backups (paid-tier), metrics-history graphs,
   mod manager (local `.pak` + UE4SS/Lua), first-run setup wizard.
-- Small polish (do with next Connect-page change): when a non-public `configuredIp` (PublicIP)
-  is set, show a "Connecting over Tailscale/VPN? Port forwarding isn't needed" hint on the
-  Connect page.
+- Email alerts (low priority — Discord already covers most users): add an Email card mirroring
+  the Discord one, subscribing to the same automation events (up/down/crash/backup). Ship TWO
+  easy routes in one card — (1) user-provided SMTP + app password via `lettre`, and (2) bring-
+  your-own transactional API key (Resend/Postmark/SES) via one HTTPS POST. Store the password/
+  key in Windows Credential Manager (`keyring` crate), NOT plaintext config. Deliverability
+  requires egress through a real provider (never raw SMTP from a home IP → spam/blocked).
+  DEFER OAuth/XOAUTH2 SMTP: code is a few days, but Gmail's restricted mail scope needs an
+  annual Google CASA security assessment + Azure app registration — only worth it as a funded
+  paid-tier feature.
 - Big bets: remote/web access (headless service + web UI), multi-game support (ARK/Valheim/etc.;
   user already runs ARK via `ark-panel`).
 
