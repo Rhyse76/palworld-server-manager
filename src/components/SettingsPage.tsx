@@ -148,7 +148,7 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
       <div className="card">
         <h2>About</h2>
         <p style={{ margin: "0 0 6px" }}>
-          <strong>Palworld Server Manager</strong> · v0.1.0
+          <strong>Palworld Server Manager</strong> · v0.2.0
         </p>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
           An unofficial, community-made tool for running a Palworld dedicated server. Not
