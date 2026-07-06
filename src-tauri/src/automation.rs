@@ -75,16 +75,36 @@ fn tick(app: &AppHandle) {
         }
     }
 
-    // Scheduled restarts (only while running). Skip the watchdog this tick.
+    // Scheduled restarts. With smart_restart, wait until the server is empty.
     if a.auto_restart_enabled && a.restart_interval_hours > 0.0 {
         let due = (t.saturating_sub(*state.last_restart.lock().unwrap())) as f64
             >= a.restart_interval_hours * 3600.0;
         if due {
-            *state.last_restart.lock().unwrap() = t;
             if server::is_running() {
-                run_restart(app, cfg.hide_server_console);
+                let players = if a.smart_restart {
+                    settings::install_dir(app)
+                        .ok()
+                        .and_then(|d| tauri::async_runtime::block_on(rest::players(&d)).ok())
+                        .map(|p| p.len())
+                        .unwrap_or(0)
+                } else {
+                    0
+                };
+                if a.smart_restart && players > 0 {
+                    logs::record(
+                        app,
+                        &format!("Scheduled restart waiting — {players} player(s) online."),
+                    );
+                    // Leave the timer 'due' so we retry once the server empties.
+                } else {
+                    *state.last_restart.lock().unwrap() = t;
+                    run_restart(app, cfg.hide_server_console);
+                    return; // skip watchdog this tick (server is cycling)
+                }
+            } else {
+                // Not running — reset so it doesn't fire the instant it starts.
+                *state.last_restart.lock().unwrap() = t;
             }
-            return;
         }
     }
 

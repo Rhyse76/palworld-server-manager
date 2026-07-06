@@ -19,12 +19,17 @@ export default function DashboardPage({ notify }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [broadcast, setBroadcast] = useState("");
+  const [history, setHistory] = useState<{ players: number; fps: number }[]>([]);
 
   const fetchAll = useCallback(async () => {
     try {
       const ov = await api.restOverview();
       setOverview(ov);
       setError(null);
+      setHistory((h) => [
+        ...h.slice(-89),
+        { players: ov.metrics.currentplayernum, fps: ov.metrics.serverfps },
+      ]);
       try {
         setPlayers(await api.restPlayers());
       } catch {
@@ -155,6 +160,16 @@ export default function DashboardPage({ notify }: Props) {
         <Tile label="Uptime" value={formatUptime(m.uptime)} />
       </div>
 
+      {history.length > 1 && (
+        <div className="card">
+          <h2>Recent activity ({history.length} samples · ~5s each)</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <Spark label="Players" color="#33c9a3" values={history.map((h) => h.players)} />
+            <Spark label="Server FPS" color="#3b82f6" values={history.map((h) => h.fps)} />
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <h2>Broadcast</h2>
         <div className="row">
@@ -218,6 +233,53 @@ export default function DashboardPage({ notify }: Props) {
         )}
       </div>
     </>
+  );
+}
+
+function Spark({ label, color, values }: { label: string; color: string; values: number[] }) {
+  const w = 300;
+  const h = 70;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const pts = values
+    .map((v, i) => {
+      const x = (i / Math.max(values.length - 1, 1)) * w;
+      const y = h - ((v - min) / range) * h;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  const current = values[values.length - 1] ?? 0;
+  return (
+    <div>
+      <div className="row spread" style={{ marginBottom: 6 }}>
+        <span className="tile-label">{label}</span>
+        <span style={{ color, fontWeight: 700 }}>{current}</span>
+      </div>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        style={{
+          width: "100%",
+          height: 70,
+          background: "var(--bg)",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+        }}
+      >
+        <polyline
+          points={pts}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <div className="row spread" style={{ marginTop: 4 }}>
+        <span style={{ color: "var(--text-dim)", fontSize: 11 }}>min {min}</span>
+        <span style={{ color: "var(--text-dim)", fontSize: 11 }}>max {max}</span>
+      </div>
+    </div>
   );
 }
 

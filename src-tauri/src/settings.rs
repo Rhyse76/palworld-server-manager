@@ -30,6 +30,8 @@ pub struct Automation {
     pub keep_backups: u32,
     /// Restart the server automatically if it dies unexpectedly (crash watchdog).
     pub auto_restart_on_crash: bool,
+    /// For scheduled restarts: wait until 0 players are online before restarting.
+    pub smart_restart: bool,
     /// Check for and apply new Palworld server versions automatically.
     pub auto_update_enabled: bool,
     pub auto_update_interval_hours: f64,
@@ -44,6 +46,7 @@ impl Default for Automation {
             backup_interval_hours: 2.0,
             keep_backups: 10,
             auto_restart_on_crash: true,
+            smart_restart: false,
             auto_update_enabled: false,
             auto_update_interval_hours: 6.0,
         }

@@ -21,6 +21,7 @@ export interface Automation {
   backupIntervalHours: number;
   keepBackups: number;
   autoRestartOnCrash: boolean;
+  smartRestart: boolean;
   autoUpdateEnabled: boolean;
   autoUpdateIntervalHours: number;
 }

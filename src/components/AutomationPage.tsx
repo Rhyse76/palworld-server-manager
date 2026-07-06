@@ -21,6 +21,7 @@ const DEFAULTS: Automation = {
   backupIntervalHours: 2,
   keepBackups: 10,
   autoRestartOnCrash: true,
+  smartRestart: false,
   autoUpdateEnabled: false,
   autoUpdateIntervalHours: 6,
 };
@@ -120,18 +121,26 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
         <p style={{ color: "var(--text-dim)" }}>
           Warns players, saves, and gracefully restarts on an interval.
         </p>
-        <div className="row">
-          <label>Every</label>
-          <input
-            type="number"
-            className="num"
-            min={0.5}
-            step={0.5}
-            value={form.restartIntervalHours}
-            disabled={!form.autoRestartEnabled}
-            onChange={(e) => set("restartIntervalHours", Number(e.target.value))}
-          />
-          <label>hours</label>
+        <div className="row" style={{ gap: 24 }}>
+          <div className="row">
+            <label>Every</label>
+            <input
+              type="number"
+              className="num"
+              min={0.5}
+              step={0.5}
+              value={form.restartIntervalHours}
+              disabled={!form.autoRestartEnabled}
+              onChange={(e) => set("restartIntervalHours", Number(e.target.value))}
+            />
+            <label>hours</label>
+          </div>
+          <div className="row">
+            <Toggle on={form.smartRestart} onChange={(v) => set("smartRestart", v)} />
+            <label title="Wait for the server to be empty before restarting">
+              Only when empty
+            </label>
+          </div>
         </div>
       </div>
 
