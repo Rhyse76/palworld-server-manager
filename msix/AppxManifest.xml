@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX manifest for the Microsoft Store.
+
+  Replace the four __TOKENS__ below with the values Microsoft Partner Center
+  gives you AFTER you reserve the app name (Product identity → "App management →
+  Product identity"):
+    __PACKAGE_IDENTITY_NAME__   = "Package/Identity/Name"          (e.g. 12345RhyseGaming.PalworldServerManager)
+    __PUBLISHER_ID__            = "Package/Identity/Publisher"     (e.g. CN=ABC12345-....)
+    __PUBLISHER_DISPLAY_NAME__  = "Package/Properties/PublisherDisplayName" (e.g. Rhyse Gaming)
+    __APP_DISPLAY_NAME__        = the reserved app name shown in the Store (Store may require an
+                                   "unofficial" wording for the Palworld trademark, e.g.
+                                   "Server Manager for Palworld (Unofficial)")
+
+  The build script (build-msix.ps1) does this substitution for you from parameters.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="__PACKAGE_IDENTITY_NAME__"
+    Publisher="__PUBLISHER_ID__"
+    Version="0.1.0.0"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>__APP_DISPLAY_NAME__</DisplayName>
+    <PublisherDisplayName>__PUBLISHER_DISPLAY_NAME__</PublisherDisplayName>
+    <Logo>assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="PalworldServerManager"
+      Executable="PalworldServerManager.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="__APP_DISPLAY_NAME__"
+        Description="Install, configure, monitor, back up, and automate your Palworld dedicated server - all from one desktop app."
+        BackgroundColor="transparent"
+        Square150x150Logo="assets\Square150x150Logo.png"
+        Square44x44Logo="assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="assets\Wide310x150Logo.png"
+          Square310x310Logo="assets\Square310x310Logo.png"
+          Square71x71Logo="assets\Square71x71Logo.png" />
+        <uap:SplashScreen Image="assets\SplashScreen.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- Desktop app repackaged as MSIX: runs at full trust so it can launch
+         SteamCMD / PalServer.exe and manage server files like a normal app. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
