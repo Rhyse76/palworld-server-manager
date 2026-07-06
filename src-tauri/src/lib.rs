@@ -214,6 +214,11 @@ fn backup_open_folder(app: AppHandle) -> Result<(), String> {
     backups::open_folder(&app)
 }
 
+#[tauri::command]
+fn set_backup_mirror(app: AppHandle, dir: String) -> Result<(), String> {
+    settings::set_backup_mirror(&app, dir)
+}
+
 // ---- Profiles ----
 
 #[tauri::command]
@@ -344,6 +349,7 @@ pub fn run() {
             backup_restore,
             backup_delete,
             backup_open_folder,
+            set_backup_mirror,
             add_profile,
             set_active_profile,
             rename_profile,

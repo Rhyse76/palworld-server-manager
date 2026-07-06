@@ -94,6 +94,8 @@ pub struct AppConfig {
     pub automation: Automation,
     pub discord: Discord,
     pub announcements: Vec<Announcement>,
+    /// Extra folder each backup is also copied to (e.g. a cloud-synced folder).
+    pub backup_mirror_dir: String,
     /// Hide the server's console window when launching (default: show it).
     pub hide_server_console: bool,
     /// Legacy single-install field, migrated into a profile on first load.
@@ -277,6 +279,12 @@ pub fn set_discord(app: &AppHandle, discord: Discord) -> Result<(), String> {
 pub fn set_announcements(app: &AppHandle, announcements: Vec<Announcement>) -> Result<(), String> {
     let mut cfg = load(app);
     cfg.announcements = announcements;
+    save(app, &cfg)
+}
+
+pub fn set_backup_mirror(app: &AppHandle, dir: String) -> Result<(), String> {
+    let mut cfg = load(app);
+    cfg.backup_mirror_dir = dir;
     save(app, &cfg)
 }
 

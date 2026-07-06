@@ -135,7 +135,7 @@ export default function App() {
         {page === "dashboard" && <DashboardPage notify={notify} />}
         {page === "connect" && <ConnectPage notify={notify} />}
         {page === "config" && <ConfigPage notify={notify} />}
-        {page === "backups" && <BackupsPage notify={notify} />}
+        {page === "backups" && <BackupsPage config={config} notify={notify} />}
         {page === "automation" && (
           <AutomationPage config={config} refresh={refresh} notify={notify} />
         )}

@@ -54,6 +54,7 @@ export interface AppConfig {
   automation: Automation;
   discord: Discord;
   announcements: Announcement[];
+  backupMirrorDir: string;
   hideServerConsole: boolean;
 }
 
@@ -142,6 +143,7 @@ export const api = {
   backupRestore: (name: string) => invoke<void>("backup_restore", { name }),
   backupDelete: (name: string) => invoke<void>("backup_delete", { name }),
   backupOpenFolder: () => invoke<void>("backup_open_folder"),
+  setBackupMirror: (dir: string) => invoke<void>("set_backup_mirror", { dir }),
 
   // Profiles
   addProfile: (name: string, path: string) => invoke<string>("add_profile", { name, path }),

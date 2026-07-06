@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { ask } from "@tauri-apps/plugin-dialog";
-import { api, type BackupInfo } from "../api";
+import { ask, open } from "@tauri-apps/plugin-dialog";
+import { api, type AppConfig, type BackupInfo } from "../api";
 
 interface Props {
+  config: AppConfig | null;
   notify: (msg: string, error?: boolean) => void;
 }
 
@@ -17,9 +18,27 @@ function formatDate(unixSecs: number): string {
   return new Date(unixSecs * 1000).toLocaleString();
 }
 
-export default function BackupsPage({ notify }: Props) {
+export default function BackupsPage({ config, notify }: Props) {
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [busy, setBusy] = useState(false);
+  const [mirror, setMirror] = useState("");
+
+  useEffect(() => {
+    setMirror(config?.backupMirrorDir ?? "");
+  }, [config?.backupMirrorDir]);
+
+  async function pickMirror() {
+    const picked = await open({ directory: true, title: "Choose off-site backup folder" });
+    if (typeof picked !== "string") return;
+    await api.setBackupMirror(picked);
+    setMirror(picked);
+    notify("Off-site backup folder set.");
+  }
+  async function clearMirror() {
+    await api.setBackupMirror("");
+    setMirror("");
+    notify("Off-site copy disabled.");
+  }
 
   async function load() {
     try {
@@ -89,6 +108,25 @@ export default function BackupsPage({ notify }: Props) {
           <button className="btn primary" onClick={create} disabled={busy}>
             {busy ? "Backing up…" : "Create backup"}
           </button>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>Off-site copy</h2>
+        <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
+          Every backup is also copied to this folder. Point it at a cloud-synced folder
+          (OneDrive, Dropbox, Google Drive) for true off-site backups.
+        </p>
+        <div className="row">
+          <span className="path">{mirror || "Not set"}</span>
+          <button className="btn" onClick={pickMirror}>
+            Choose folder…
+          </button>
+          {mirror && (
+            <button className="btn danger" onClick={clearMirror}>
+              Clear
+            </button>
+          )}
         </div>
       </div>
 

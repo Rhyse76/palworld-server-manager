@@ -15,6 +15,7 @@ use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 
 use crate::server;
+use crate::settings;
 use crate::util::CommandExt;
 
 const SAVEGAMES_REL: &str = "Pal/Saved/SaveGames";
@@ -50,6 +51,17 @@ pub fn create(app: &AppHandle, install_dir: &Path) -> Result<String, String> {
     let name = format!("save-{}.zip", timestamp());
     let dest = backups_dir(app)?.join(&name);
     zip_dir(&src, &dest).map_err(|e| format!("backup failed: {e}"))?;
+
+    // Also copy to the off-site mirror folder, if configured.
+    let mirror = settings::load(app).backup_mirror_dir;
+    let mirror = mirror.trim();
+    if !mirror.is_empty() {
+        let mdir = std::path::Path::new(mirror);
+        let _ = fs::create_dir_all(mdir);
+        if mdir.is_dir() {
+            let _ = fs::copy(&dest, mdir.join(&name));
+        }
+    }
     Ok(name)
 }
 
