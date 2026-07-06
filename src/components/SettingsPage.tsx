@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { ask } from "@tauri-apps/plugin-dialog";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { api, type AppConfig, type Discord } from "../api";
 
 interface Props {
@@ -51,6 +54,30 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
       notify(String(e), true);
     } finally {
       setSaving(false);
+    }
+  }
+
+  const [checkingApp, setCheckingApp] = useState(false);
+  async function checkAppUpdate() {
+    setCheckingApp(true);
+    try {
+      const update = await check();
+      if (!update) {
+        notify("You're on the latest version.");
+        return;
+      }
+      const yes = await ask(
+        `Version ${update.version} is available. Download and install now? The app will restart.`,
+        { title: "App update available", kind: "info" },
+      );
+      if (!yes) return;
+      notify("Downloading update…");
+      await update.downloadAndInstall();
+      await relaunch();
+    } catch (e) {
+      notify(String(e), true);
+    } finally {
+      setCheckingApp(false);
     }
   }
 
@@ -148,7 +175,7 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
       <div className="card">
         <h2>About</h2>
         <p style={{ margin: "0 0 6px" }}>
-          <strong>Palworld Server Manager</strong> · v0.3.0
+          <strong>Palworld Server Manager</strong> · v0.4.0
         </p>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
           An unofficial, community-made tool for running a Palworld dedicated server. Not
@@ -158,9 +185,14 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
         <p style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 0 }}>
           © 2026 PatchWork Labs, LLC.
         </p>
-        <button className="btn primary" onClick={() => openUrl(SUPPORT_URL)}>
-          ♥ Support development
-        </button>
+        <div className="row">
+          <button className="btn" onClick={checkAppUpdate} disabled={checkingApp}>
+            {checkingApp ? "Checking…" : "Check for app updates"}
+          </button>
+          <button className="btn primary" onClick={() => openUrl(SUPPORT_URL)}>
+            ♥ Support development
+          </button>
+        </div>
       </div>
     </>
   );

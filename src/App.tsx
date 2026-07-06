@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { check } from "@tauri-apps/plugin-updater";
 import { api, type AppConfig, type StatusInfo } from "./api";
 import ServerPage from "./components/ServerPage";
 import ConfigPage from "./components/ConfigPage";
@@ -91,6 +92,15 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   }, []);
 
+  // Quiet check for a new app version on launch.
+  useEffect(() => {
+    check()
+      .then((u) => {
+        if (u) notify(`App update v${u.version} available — Settings → Check for app updates.`);
+      })
+      .catch(() => {});
+  }, [notify]);
+
   const activeName = config?.profiles.find((p) => p.id === config.activeProfile)?.name;
 
   return (
@@ -129,7 +139,7 @@ export default function App() {
           )}
           {status?.running ? "● Server online" : "○ Server offline"}
           <br />
-          v0.3.0
+          v0.4.0
         </div>
       </aside>
 

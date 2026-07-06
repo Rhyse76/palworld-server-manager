@@ -184,12 +184,12 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
 
       <div className="card">
         <div className="row spread">
-          <h2 style={{ margin: 0 }}>Auto-update</h2>
+          <h2 style={{ margin: 0 }}>Server auto-update</h2>
           <Toggle on={form.autoUpdateEnabled} onChange={(v) => set("autoUpdateEnabled", v)} />
         </div>
         <p style={{ color: "var(--text-dim)" }}>
-          Checks for a new Palworld server version and, when one is out, warns players, saves,
-          updates, and restarts automatically.
+          Keeps the <strong>Palworld dedicated server (the game)</strong> — not this app — on the
+          latest build. When a new version drops it warns players, saves, updates, and restarts.
         </p>
         <div className="row" style={{ gap: 16 }}>
           <div className="row">
