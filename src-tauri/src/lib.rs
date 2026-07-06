@@ -2,6 +2,7 @@ mod automation;
 mod backups;
 mod config;
 mod detect;
+mod discord;
 mod logs;
 mod rest;
 mod server;
@@ -69,6 +70,7 @@ fn start_server(app: AppHandle) -> Result<(), String> {
     server::start(&install_dir, settings::hide_console(&app))?;
     automation::set_supervise(&app, true);
     logs::record(&app, "Server started.");
+    discord::notify(&app, discord::Event::ServerStarted);
     Ok(())
 }
 
@@ -78,6 +80,7 @@ fn stop_server(app: AppHandle) -> Result<(), String> {
     automation::set_supervise(&app, false);
     server::stop()?;
     logs::record(&app, "Server stopped by user.");
+    discord::notify(&app, discord::Event::ServerStopped);
     Ok(())
 }
 
@@ -242,6 +245,21 @@ fn set_hide_console(app: AppHandle, hide: bool) -> Result<(), String> {
     settings::set_hide_console(&app, hide)
 }
 
+#[tauri::command]
+fn set_discord(app: AppHandle, discord: settings::Discord) -> Result<(), String> {
+    settings::set_discord(&app, discord)
+}
+
+#[tauri::command]
+fn discord_test(app: AppHandle) -> Result<(), String> {
+    let cfg = settings::load(&app).discord;
+    if cfg.webhook_url.trim().is_empty() {
+        return Err("Enter a webhook URL first.".into());
+    }
+    discord::notify(&app, discord::Event::Test);
+    Ok(())
+}
+
 // ---- Activity log ----
 
 #[tauri::command]
@@ -257,6 +275,7 @@ pub fn run() {
         .manage(automation::SchedulerState::default())
         .setup(|app| {
             automation::start(app.handle().clone());
+            discord::start_player_watch(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -291,6 +310,8 @@ pub fn run() {
             delete_profile,
             set_automation,
             set_hide_console,
+            set_discord,
+            discord_test,
             read_activity_log,
         ])
         .run(tauri::generate_context!())

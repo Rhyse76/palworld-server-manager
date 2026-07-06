@@ -64,8 +64,19 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
 - **M3 (done):** Automation (scheduled restarts + scheduled backups w/ pruning + **crash
   watchdog**, 60s scheduler thread), **manager activity log**, multi-server profiles (config
   migrated to profiles). Server launched via `PalServer.exe` in its own console (stable).
-- **M4:** GVAS save editing (players, pals, inventory, guilds).
+- **M4 (deferred):** GVAS save editing (players, pals, inventory, guilds) — read-only
+  viewer first, then edits (give items/levels) with forced backups + server-stop.
 - **M5:** Polish + packaged `.msi`/`.exe` release, auto-update.
+
+## Backlog / feature ideas (prioritized)
+
+- Quick wins: **Discord webhooks** (up/down/crash, join/leave, backups — IN PROGRESS),
+  scheduled announcements/MOTD, auto-update on new server versions, smart (0-player) restarts.
+- Differentiators: **connectivity/port-forward helper** (public IP + reachability + UPnP —
+  the "friends can't connect" fix), off-site/cloud backups (paid-tier), metrics-history graphs,
+  mod manager (local `.pak` + UE4SS/Lua), first-run setup wizard.
+- Big bets: remote/web access (headless service + web UI), multi-game support (ARK/Valheim/etc.;
+  user already runs ARK via `ark-panel`).
 
 ## Commands
 

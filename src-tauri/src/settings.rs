@@ -45,12 +45,36 @@ impl Default for Automation {
     }
 }
 
+/// Discord webhook notification settings.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Discord {
+    pub enabled: bool,
+    pub webhook_url: String,
+    pub notify_server: bool,
+    pub notify_players: bool,
+    pub notify_backups: bool,
+}
+
+impl Default for Discord {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            webhook_url: String::new(),
+            notify_server: true,
+            notify_players: true,
+            notify_backups: true,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppConfig {
     pub active_profile: Option<String>,
     pub profiles: Vec<ServerProfile>,
     pub automation: Automation,
+    pub discord: Discord,
     /// Hide the server's console window when launching (default: show it).
     pub hide_server_console: bool,
     /// Legacy single-install field, migrated into a profile on first load.
@@ -222,6 +246,12 @@ pub fn set_automation(app: &AppHandle, automation: Automation) -> Result<(), Str
 pub fn set_hide_console(app: &AppHandle, hide: bool) -> Result<(), String> {
     let mut cfg = load(app);
     cfg.hide_server_console = hide;
+    save(app, &cfg)
+}
+
+pub fn set_discord(app: &AppHandle, discord: Discord) -> Result<(), String> {
+    let mut cfg = load(app);
+    cfg.discord = discord;
     save(app, &cfg)
 }
 

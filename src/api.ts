@@ -23,10 +23,19 @@ export interface Automation {
   autoRestartOnCrash: boolean;
 }
 
+export interface Discord {
+  enabled: boolean;
+  webhookUrl: string;
+  notifyServer: boolean;
+  notifyPlayers: boolean;
+  notifyBackups: boolean;
+}
+
 export interface AppConfig {
   activeProfile: string | null;
   profiles: ServerProfile[];
   automation: Automation;
+  discord: Discord;
   hideServerConsole: boolean;
 }
 
@@ -125,6 +134,8 @@ export const api = {
   // Automation
   setAutomation: (automation: Automation) => invoke<void>("set_automation", { automation }),
   setHideConsole: (hide: boolean) => invoke<void>("set_hide_console", { hide }),
+  setDiscord: (discord: Discord) => invoke<void>("set_discord", { discord }),
+  discordTest: () => invoke<void>("discord_test"),
 
   // Activity log
   readActivityLog: () => invoke<string>("read_activity_log"),

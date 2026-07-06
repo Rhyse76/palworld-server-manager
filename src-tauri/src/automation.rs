@@ -10,7 +10,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tauri::{AppHandle, Manager};
 
-use crate::{backups, logs, rest, server, settings};
+use crate::{backups, discord, logs, rest, server, settings};
 
 const TICK: Duration = Duration::from_secs(60);
 
@@ -90,6 +90,7 @@ fn tick(app: &AppHandle) {
         if supervise && !server::is_running() {
             *state.last_restart.lock().unwrap() = t;
             logs::record(app, "Server stopped unexpectedly — auto-restarting…");
+            discord::notify(app, discord::Event::Crashed);
             if let Ok(dir) = settings::install_dir(app) {
                 match server::start(&dir, cfg.hide_server_console) {
                     Ok(()) => logs::record(app, "Crash watchdog: server restarted."),
@@ -107,6 +108,7 @@ fn run_backup(app: &AppHandle, keep: u32) {
     };
     match backups::create(app, &dir) {
         Ok(name) => {
+            discord::notify(app, discord::Event::BackupCreated(name.clone()));
             logs::record(app, &format!("Auto-backup created: {name}"));
             prune(app, keep);
         }
@@ -132,6 +134,7 @@ fn run_restart(app: &AppHandle, hide_console: bool) {
         Err(_) => return,
     };
     logs::record(app, "Scheduled restart: warning players and shutting down (30s)…");
+    discord::notify(app, discord::Event::Restarting("Scheduled restart in 30 seconds.".into()));
     let _ = tauri::async_runtime::block_on(rest::announce(
         &dir,
         "Server will restart in 30 seconds.",
