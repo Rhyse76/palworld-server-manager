@@ -30,6 +30,9 @@ pub struct Automation {
     pub keep_backups: u32,
     /// Restart the server automatically if it dies unexpectedly (crash watchdog).
     pub auto_restart_on_crash: bool,
+    /// Check for and apply new Palworld server versions automatically.
+    pub auto_update_enabled: bool,
+    pub auto_update_interval_hours: f64,
 }
 
 impl Default for Automation {
@@ -41,6 +44,8 @@ impl Default for Automation {
             backup_interval_hours: 2.0,
             keep_backups: 10,
             auto_restart_on_crash: true,
+            auto_update_enabled: false,
+            auto_update_interval_hours: 6.0,
         }
     }
 }
@@ -68,6 +73,16 @@ impl Default for Discord {
     }
 }
 
+/// A recurring in-game broadcast (MOTD / rules / reminders).
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Announcement {
+    pub id: String,
+    pub message: String,
+    pub interval_minutes: f64,
+    pub enabled: bool,
+}
+
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppConfig {
@@ -75,6 +90,7 @@ pub struct AppConfig {
     pub profiles: Vec<ServerProfile>,
     pub automation: Automation,
     pub discord: Discord,
+    pub announcements: Vec<Announcement>,
     /// Hide the server's console window when launching (default: show it).
     pub hide_server_console: bool,
     /// Legacy single-install field, migrated into a profile on first load.
@@ -252,6 +268,12 @@ pub fn set_hide_console(app: &AppHandle, hide: bool) -> Result<(), String> {
 pub fn set_discord(app: &AppHandle, discord: Discord) -> Result<(), String> {
     let mut cfg = load(app);
     cfg.discord = discord;
+    save(app, &cfg)
+}
+
+pub fn set_announcements(app: &AppHandle, announcements: Vec<Announcement>) -> Result<(), String> {
+    let mut cfg = load(app);
+    cfg.announcements = announcements;
     save(app, &cfg)
 }
 

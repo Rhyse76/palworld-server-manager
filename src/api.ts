@@ -21,6 +21,22 @@ export interface Automation {
   backupIntervalHours: number;
   keepBackups: number;
   autoRestartOnCrash: boolean;
+  autoUpdateEnabled: boolean;
+  autoUpdateIntervalHours: number;
+}
+
+export interface Announcement {
+  id: string;
+  message: string;
+  intervalMinutes: number;
+  enabled: boolean;
+}
+
+export interface UpdateStatus {
+  installedBuild: string;
+  latestBuild: string;
+  updateAvailable: boolean;
+  checked: boolean;
 }
 
 export interface Discord {
@@ -36,6 +52,7 @@ export interface AppConfig {
   profiles: ServerProfile[];
   automation: Automation;
   discord: Discord;
+  announcements: Announcement[];
   hideServerConsole: boolean;
 }
 
@@ -133,6 +150,9 @@ export const api = {
 
   // Automation
   setAutomation: (automation: Automation) => invoke<void>("set_automation", { automation }),
+  setAnnouncements: (announcements: Announcement[]) =>
+    invoke<void>("set_announcements", { announcements }),
+  checkUpdate: () => invoke<UpdateStatus>("check_update"),
   setHideConsole: (hide: boolean) => invoke<void>("set_hide_console", { hide }),
   setDiscord: (discord: Discord) => invoke<void>("set_discord", { discord }),
   discordTest: () => invoke<void>("discord_test"),

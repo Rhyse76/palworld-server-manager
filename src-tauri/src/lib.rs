@@ -9,6 +9,7 @@ mod rest;
 mod server;
 mod settings;
 mod steamcmd;
+mod updates;
 mod util;
 
 use serde::Serialize;
@@ -271,6 +272,18 @@ fn read_activity_log(app: AppHandle) -> Result<String, String> {
 // ---- Connectivity ----
 
 #[tauri::command]
+fn set_announcements(app: AppHandle, announcements: Vec<settings::Announcement>) -> Result<(), String> {
+    settings::set_announcements(&app, announcements)
+}
+
+#[tauri::command]
+async fn check_update(app: AppHandle) -> Result<updates::UpdateStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || updates::check(&app))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn network_info(app: AppHandle) -> network::NetworkInfo {
     network::info(&app)
 }
@@ -331,6 +344,8 @@ pub fn run() {
             set_discord,
             discord_test,
             read_activity_log,
+            set_announcements,
+            check_update,
             network_info,
             network_forward,
             network_unforward,

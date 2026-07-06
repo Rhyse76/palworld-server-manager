@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { api, onActivityLog, type AppConfig, type Automation } from "../api";
+import {
+  api,
+  onActivityLog,
+  type AppConfig,
+  type Announcement,
+  type Automation,
+  type UpdateStatus,
+} from "../api";
 
 interface Props {
   config: AppConfig | null;
@@ -14,17 +21,24 @@ const DEFAULTS: Automation = {
   backupIntervalHours: 2,
   keepBackups: 10,
   autoRestartOnCrash: true,
+  autoUpdateEnabled: false,
+  autoUpdateIntervalHours: 6,
 };
 
 export default function AutomationPage({ config, refresh, notify }: Props) {
   const [form, setForm] = useState<Automation>(config?.automation ?? DEFAULTS);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(config?.announcements ?? []);
   const [saving, setSaving] = useState(false);
   const [activity, setActivity] = useState<string[]>([]);
+  const [update, setUpdate] = useState<UpdateStatus | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  // Sync when config first loads.
   useEffect(() => {
     if (config?.automation) setForm(config.automation);
   }, [config?.automation]);
+  useEffect(() => {
+    if (config?.announcements) setAnnouncements(config.announcements);
+  }, [config?.announcements]);
 
   useEffect(() => {
     const un = onActivityLog((line) => setActivity((a) => [...a.slice(-200), line]));
@@ -41,6 +55,7 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
     setSaving(true);
     try {
       await api.setAutomation(form);
+      await api.setAnnouncements(announcements);
       notify("Automation settings saved.");
       refresh();
     } catch (e) {
@@ -50,12 +65,36 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
     }
   }
 
+  async function checkNow() {
+    setChecking(true);
+    try {
+      setUpdate(await api.checkUpdate());
+    } catch (e) {
+      notify(String(e), true);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  function addAnnouncement() {
+    setAnnouncements((a) => [
+      ...a,
+      { id: crypto.randomUUID(), message: "", intervalMinutes: 30, enabled: true },
+    ]);
+  }
+  function updateAnnouncement(id: string, patch: Partial<Announcement>) {
+    setAnnouncements((a) => a.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  }
+  function removeAnnouncement(id: string) {
+    setAnnouncements((a) => a.filter((x) => x.id !== id));
+  }
+
   return (
     <>
       <div className="page-head">
         <div>
           <h1>Automation</h1>
-          <p>Scheduled restarts and backups for the active server. Runs while the app is open.</p>
+          <p>Scheduled tasks for the active server. Runs while the app is open.</p>
         </div>
         <button className="btn primary" onClick={save} disabled={saving}>
           {saving ? "Saving…" : "Save settings"}
@@ -68,8 +107,8 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
           <Toggle on={form.autoRestartOnCrash} onChange={(v) => set("autoRestartOnCrash", v)} />
         </div>
         <p style={{ color: "var(--text-dim)", marginBottom: 0 }}>
-          Watchdog: if the server dies unexpectedly (e.g. a game crash) while it should be
-          running, automatically start it again. Checked every 60 seconds.
+          Watchdog: if the server dies unexpectedly while it should be running, automatically
+          start it again. Checked every 60 seconds.
         </p>
       </div>
 
@@ -79,8 +118,7 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
           <Toggle on={form.autoRestartEnabled} onChange={(v) => set("autoRestartEnabled", v)} />
         </div>
         <p style={{ color: "var(--text-dim)" }}>
-          Warns players, saves, and gracefully restarts on an interval. Only fires while the
-          server is running.
+          Warns players, saves, and gracefully restarts on an interval.
         </p>
         <div className="row">
           <label>Every</label>
@@ -133,6 +171,95 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
             <label>backups</label>
           </div>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="row spread">
+          <h2 style={{ margin: 0 }}>Auto-update</h2>
+          <Toggle on={form.autoUpdateEnabled} onChange={(v) => set("autoUpdateEnabled", v)} />
+        </div>
+        <p style={{ color: "var(--text-dim)" }}>
+          Checks for a new Palworld server version and, when one is out, warns players, saves,
+          updates, and restarts automatically.
+        </p>
+        <div className="row" style={{ gap: 16 }}>
+          <div className="row">
+            <label>Check every</label>
+            <input
+              type="number"
+              className="num"
+              min={1}
+              step={1}
+              value={form.autoUpdateIntervalHours}
+              disabled={!form.autoUpdateEnabled}
+              onChange={(e) => set("autoUpdateIntervalHours", Number(e.target.value))}
+            />
+            <label>hours</label>
+          </div>
+          <button className="btn" onClick={checkNow} disabled={checking}>
+            {checking ? "Checking…" : "Check now"}
+          </button>
+          {update &&
+            (!update.checked ? (
+              <span style={{ color: "var(--text-dim)" }}>Couldn't check (server installed?).</span>
+            ) : update.updateAvailable ? (
+              <span className="pill bad">
+                <span className="dot" /> Update available ({update.installedBuild} →{" "}
+                {update.latestBuild})
+              </span>
+            ) : (
+              <span className="pill ok">
+                <span className="dot" /> Up to date
+              </span>
+            ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="row spread" style={{ marginBottom: 10 }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Scheduled announcements</h2>
+            <p style={{ color: "var(--text-dim)", margin: "6px 0 0" }}>
+              Recurring in-game broadcasts (rules, Discord link, restart reminders). Sent only
+              while the server is running.
+            </p>
+          </div>
+          <button className="btn" onClick={addAnnouncement}>
+            Add
+          </button>
+        </div>
+        {announcements.length === 0 ? (
+          <p style={{ color: "var(--text-dim)", margin: 0 }}>No announcements yet.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {announcements.map((a) => (
+              <div className="field" key={a.id} style={{ gap: 10 }}>
+                <Toggle on={a.enabled} onChange={(v) => updateAnnouncement(a.id, { enabled: v })} />
+                <input
+                  className="search"
+                  style={{ flex: 1 }}
+                  placeholder="Message to broadcast…"
+                  value={a.message}
+                  onChange={(e) => updateAnnouncement(a.id, { message: e.target.value })}
+                />
+                <input
+                  type="number"
+                  className="num"
+                  min={1}
+                  step={1}
+                  value={a.intervalMinutes}
+                  onChange={(e) =>
+                    updateAnnouncement(a.id, { intervalMinutes: Number(e.target.value) })
+                  }
+                />
+                <label>min</label>
+                <button className="btn danger" onClick={() => removeAnnouncement(a.id)}>
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card">
