@@ -132,6 +132,7 @@ export const api = {
   restKick: (userid: string, message: string) => invoke<void>("rest_kick", { userid, message }),
   restBan: (userid: string, message: string) => invoke<void>("rest_ban", { userid, message }),
   restUnban: (userid: string) => invoke<void>("rest_unban", { userid }),
+  bansList: () => invoke<string[]>("bans_list"),
   restSave: () => invoke<void>("rest_save"),
   restShutdown: (seconds: number, message: string) =>
     invoke<void>("rest_shutdown", { seconds, message }),

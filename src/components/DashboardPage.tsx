@@ -20,6 +20,27 @@ export default function DashboardPage({ notify }: Props) {
   const [loading, setLoading] = useState(true);
   const [broadcast, setBroadcast] = useState("");
   const [history, setHistory] = useState<{ players: number; fps: number }[]>([]);
+  const [bans, setBans] = useState<string[]>([]);
+  const [unbanId, setUnbanId] = useState("");
+
+  async function loadBans() {
+    try {
+      setBans(await api.bansList());
+    } catch {
+      /* ignore */
+    }
+  }
+  async function unban(id: string) {
+    if (!id.trim()) return;
+    try {
+      await api.restUnban(id.trim());
+      notify(`Unbanned ${id.trim()}.`);
+      setUnbanId("");
+      setTimeout(loadBans, 500);
+    } catch (e) {
+      notify(String(e), true);
+    }
+  }
 
   const fetchAll = useCallback(async () => {
     try {
@@ -35,6 +56,7 @@ export default function DashboardPage({ notify }: Props) {
       } catch {
         setPlayers([]);
       }
+      loadBans();
     } catch (e) {
       setError(String(e));
       setOverview(null);
@@ -224,6 +246,40 @@ export default function DashboardPage({ notify }: Props) {
                       onClick={() => moderate(p, "ban")}
                     >
                       Ban
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="card">
+        <h2>Banned players ({bans.length})</h2>
+        <div className="row" style={{ marginBottom: bans.length ? 14 : 0 }}>
+          <input
+            className="search"
+            placeholder="Unban by user id (e.g. steam_7656…)"
+            value={unbanId}
+            onChange={(e) => setUnbanId(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && unban(unbanId)}
+          />
+          <button className="btn primary" onClick={() => unban(unbanId)} disabled={!unbanId.trim()}>
+            Unban
+          </button>
+        </div>
+        {bans.length === 0 ? (
+          <p style={{ color: "var(--text-dim)", margin: 0 }}>No banned players.</p>
+        ) : (
+          <table className="table">
+            <tbody>
+              {bans.map((id) => (
+                <tr key={id}>
+                  <td style={{ fontFamily: "monospace" }}>{id}</td>
+                  <td style={{ textAlign: "right" }}>
+                    <button className="btn" onClick={() => unban(id)}>
+                      Unban
                     </button>
                   </td>
                 </tr>

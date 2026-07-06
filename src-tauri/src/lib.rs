@@ -1,5 +1,6 @@
 mod automation;
 mod backups;
+mod bans;
 mod config;
 mod detect;
 mod discord;
@@ -159,7 +160,14 @@ async fn rest_ban(app: AppHandle, userid: String, message: String) -> Result<(),
 #[tauri::command]
 async fn rest_unban(app: AppHandle, userid: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::unban(&dir, &userid).await
+    rest::unban(&dir, &userid).await?;
+    logs::record(&app, &format!("Unbanned {userid}."));
+    Ok(())
+}
+
+#[tauri::command]
+fn bans_list(app: AppHandle) -> Result<Vec<String>, String> {
+    bans::list(&settings::install_dir(&app)?)
 }
 
 #[tauri::command]
@@ -362,6 +370,7 @@ pub fn run() {
             rest_kick,
             rest_ban,
             rest_unban,
+            bans_list,
             rest_save,
             rest_shutdown,
             enable_rest_api,
