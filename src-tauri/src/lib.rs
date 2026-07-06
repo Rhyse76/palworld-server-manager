@@ -341,6 +341,11 @@ fn network_unforward(app: AppHandle) -> Result<String, String> {
     network::unforward(&app)
 }
 
+#[tauri::command]
+fn network_reachability(app: AppHandle) -> network::Reachability {
+    network::reachability(&app)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -396,6 +401,7 @@ pub fn run() {
             network_info,
             network_forward,
             network_unforward,
+            network_reachability,
             inspect_save,
             mods_list,
             mod_set_enabled,

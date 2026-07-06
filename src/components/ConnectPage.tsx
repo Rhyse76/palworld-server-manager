@@ -1,14 +1,27 @@
 import { useEffect, useState } from "react";
-import { api, type NetworkInfo } from "../api";
+import { api, type NetworkInfo, type Reachability } from "../api";
 
 interface Props {
   notify: (msg: string, error?: boolean) => void;
+}
+
+/** Mirrors the backend: addresses that reach this PC over a private/overlay
+ *  network (Tailscale, LAN, CGNAT) rather than the public internet. */
+function isOverlayIp(ip: string): boolean {
+  const m = ip.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (m) {
+    const a = +m[1], b = +m[2];
+    return a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 100 && b >= 64 && b <= 127);
+  }
+  return ip.startsWith("fd");
 }
 
 export default function ConnectPage({ notify }: Props) {
   const [info, setInfo] = useState<NetworkInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [reach, setReach] = useState<Reachability | null>(null);
+  const [testing, setTesting] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -35,6 +48,19 @@ export default function ConnectPage({ notify }: Props) {
     navigator.clipboard.writeText(connectAddr);
     notify("Connect address copied.");
   }
+
+  async function test() {
+    setTesting(true);
+    try {
+      setReach(await api.networkReachability());
+    } catch (e) {
+      notify(String(e), true);
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  const overlay = info?.configuredIp ? isOverlayIp(info.configuredIp) : false;
 
   async function forward(open: boolean) {
     setBusy(true);
@@ -114,26 +140,59 @@ export default function ConnectPage({ notify }: Props) {
       </div>
 
       <div className="card">
-        <h2>Can't your friends connect?</h2>
+        <h2>Can friends reach you?</h2>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
-          The usual cause is that your router isn't forwarding the game port. Try opening it
-          automatically (works if your router has UPnP enabled):
+          Checks that the server is up and — for public IPs — that your router is actually
+          forwarding the game port.
         </p>
         <div className="row">
-          <button className="btn primary" onClick={() => forward(true)} disabled={busy}>
-            {busy ? "Working…" : "Open port automatically (UPnP)"}
-          </button>
-          <button className="btn" onClick={() => forward(false)} disabled={busy}>
-            Close port
+          <button className="btn primary" onClick={test} disabled={testing || loading}>
+            {testing ? "Testing…" : "Test reachability"}
           </button>
         </div>
-        <div className="note" style={{ marginTop: 16 }}>
-          <strong>If UPnP fails</strong>, forward it manually in your router: forward{" "}
-          <strong>UDP port {info?.port ?? 8211}</strong> to this PC's LAN IP{" "}
-          <strong>{info?.localIp ?? "…"}</strong>. (Router admin is usually{" "}
-          <code>192.168.1.1</code> or <code>192.168.0.1</code>.)
-        </div>
+        {reach && (
+          <div className="note" style={{ marginTop: 16 }}>
+            <span className={`pill ${reach.verdict === "ready" ? "ok" : reach.verdict === "unknown" ? "" : "off"}`}>
+              <span className="dot" />{" "}
+              {reach.verdict === "ready" ? "Ready" : reach.verdict === "unknown" ? "Can't confirm" : "Not ready"}
+            </span>
+            <span style={{ marginLeft: 10 }}>{reach.message}</span>
+          </div>
+        )}
       </div>
+
+      {overlay ? (
+        <div className="card">
+          <h2>Connecting over Tailscale / VPN</h2>
+          <div className="note" style={{ marginTop: 0 }}>
+            Your connect address <strong>{info?.configuredIp}</strong> is a VPN/Tailscale
+            address, so <strong>port forwarding isn't needed</strong>. Just make sure each
+            friend is on the same Tailscale network (or VPN) and the server is running.
+          </div>
+        </div>
+      ) : (
+        <div className="card">
+          <h2>Can't your friends connect?</h2>
+          <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
+            The usual cause is that your router isn't forwarding the game port. Try opening it
+            automatically (works if your router has UPnP enabled):
+          </p>
+          <div className="row">
+            <button className="btn primary" onClick={() => forward(true)} disabled={busy}>
+              {busy ? "Working…" : "Open port automatically (UPnP)"}
+            </button>
+            <button className="btn" onClick={() => forward(false)} disabled={busy}>
+              Close port
+            </button>
+          </div>
+          <div className="note" style={{ marginTop: 16 }}>
+            <strong>If UPnP fails</strong>, forward it manually in your router: forward{" "}
+            <strong>UDP port {info?.port ?? 8211}</strong> to this PC's LAN IP{" "}
+            <strong>{info?.localIp ?? "…"}</strong>. (Router admin is usually{" "}
+            <code>192.168.1.1</code> or <code>192.168.0.1</code>.)
+          </div>
+        </div>
+      )}
     </>
   );
 }

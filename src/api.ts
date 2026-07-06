@@ -178,6 +178,7 @@ export const api = {
   networkInfo: () => invoke<NetworkInfo>("network_info"),
   networkForward: () => invoke<string>("network_forward"),
   networkUnforward: () => invoke<string>("network_unforward"),
+  networkReachability: () => invoke<Reachability>("network_reachability"),
 };
 
 export interface NetworkInfo {
@@ -187,6 +188,14 @@ export interface NetworkInfo {
   portListening: boolean;
   /** The server's configured PublicIP (e.g. a Tailscale IP or domain), if set. */
   configuredIp: string;
+}
+
+export interface Reachability {
+  serverRunning: boolean;
+  usingOverlay: boolean;
+  routerForwarding: boolean | null;
+  verdict: "ready" | "not_ready" | "unknown";
+  message: string;
 }
 
 export interface ModInfo {

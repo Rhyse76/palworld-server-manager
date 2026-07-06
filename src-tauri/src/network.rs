@@ -84,6 +84,111 @@ pub fn info(app: &AppHandle) -> NetworkInfo {
     }
 }
 
+/// True for addresses that reach this PC over a private/overlay network
+/// (Tailscale, LAN, CGNAT) rather than the public internet — in which case
+/// router port-forwarding is irrelevant.
+fn is_overlay_ip(ip: &str) -> bool {
+    if let Ok(v4) = ip.parse::<Ipv4Addr>() {
+        let o = v4.octets();
+        return o[0] == 10                              // 10.0.0.0/8   (private / Tailscale often)
+            || (o[0] == 192 && o[1] == 168)            // 192.168.0.0/16 (LAN)
+            || (o[0] == 172 && (16..=31).contains(&o[1])) // 172.16.0.0/12 (private)
+            || (o[0] == 100 && (64..=127).contains(&o[1])); // 100.64.0.0/10 (CGNAT / Tailscale)
+    }
+    // Tailscale IPv6 (fd7a:115c:a1e0::/48) and any other non-v4 literal → treat
+    // hostnames/domains as public (they resolve to a real address).
+    ip.starts_with("fd7a:") || ip.starts_with("fd")
+}
+
+/// Ask the UPnP router whether the UDP game port is currently forwarded to this
+/// PC. `Some(true/false)` when a router answered; `None` when we couldn't reach
+/// one (so the user must verify manually).
+fn router_forwarding(port: u16, local: Option<Ipv4Addr>) -> Option<bool> {
+    let gateway = igd::search_gateway(Default::default()).ok()?;
+    let local_str = local.map(|i| i.to_string());
+    // Walk the router's mapping table; a client may not see every entry, but a
+    // matching enabled UDP entry for our port is a definite "yes".
+    for i in 0..1024u32 {
+        match gateway.get_generic_port_mapping_entry(i) {
+            Ok(e) => {
+                let ours = e.protocol == igd::PortMappingProtocol::UDP
+                    && e.external_port == port
+                    && e.enabled
+                    && local_str.as_deref().map_or(true, |l| e.internal_client == l);
+                if ours {
+                    return Some(true);
+                }
+            }
+            // End of the table (index out of bounds) — we saw no match.
+            Err(_) => return Some(false),
+        }
+    }
+    Some(false)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Reachability {
+    /// Something is bound to the game port on this PC (i.e. the server is up).
+    pub server_running: bool,
+    /// Whether the connect address is a Tailscale/VPN/LAN overlay (no forwarding needed).
+    pub using_overlay: bool,
+    /// Router forwarding state: `Some(true/false)` if a UPnP router answered, else `None`.
+    pub router_forwarding: Option<bool>,
+    /// "ready" | "not_ready" | "unknown".
+    pub verdict: String,
+    pub message: String,
+}
+
+/// Assess whether friends can actually reach this server, and say why not.
+pub fn reachability(app: &AppHandle) -> Reachability {
+    let n = info(app);
+    let local = local_ipv4();
+    let server_running = n.port_listening;
+    let using_overlay = !n.configured_ip.is_empty() && is_overlay_ip(&n.configured_ip);
+
+    // Overlay (Tailscale/VPN/LAN): router forwarding doesn't apply.
+    if using_overlay {
+        let (verdict, message) = if server_running {
+            ("ready", format!(
+                "Reachable over your VPN/Tailscale address ({}). Friends on the same network connect to {}:{} — no port forwarding needed.",
+                n.configured_ip, n.configured_ip, n.port
+            ))
+        } else {
+            ("not_ready", "Your VPN/Tailscale address is set, but the server isn't running. Start it, then friends on your network can connect.".into())
+        };
+        return Reachability { server_running, using_overlay, router_forwarding: None, verdict: verdict.into(), message };
+    }
+
+    // Public-internet path: forwarding matters.
+    if !server_running {
+        return Reachability {
+            server_running,
+            using_overlay,
+            router_forwarding: None,
+            verdict: "not_ready".into(),
+            message: "The server isn't running on this PC. Start it before testing reachability.".into(),
+        };
+    }
+
+    let router_forwarding = router_forwarding(n.port, local);
+    let (verdict, message) = match router_forwarding {
+        Some(true) => ("ready", format!(
+            "Your router is forwarding UDP {} to this PC. Friends connect to {}:{}.",
+            n.port, if n.configured_ip.is_empty() { &n.public_ip } else { &n.configured_ip }, n.port
+        )),
+        Some(false) => ("not_ready", format!(
+            "The server is up, but your router isn't forwarding UDP {}. Use \"Open port automatically\" below, or forward it manually.",
+            n.port
+        )),
+        None => ("unknown", format!(
+            "The server is up. We couldn't reach a UPnP router to confirm forwarding — verify UDP {} is forwarded to {} on your router.",
+            n.port, local.map(|i| i.to_string()).unwrap_or_else(|| "this PC".into())
+        )),
+    };
+    Reachability { server_running, using_overlay, router_forwarding, verdict: verdict.into(), message }
+}
+
 /// Try to auto-forward the UDP game port via UPnP. Returns a human message.
 pub fn forward(app: &AppHandle) -> Result<String, String> {
     let port = game_port(app);
