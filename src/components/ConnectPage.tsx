@@ -25,7 +25,11 @@ export default function ConnectPage({ notify }: Props) {
     load();
   }, []);
 
-  const connectAddr = info ? `${info.publicIp}:${info.port}` : "";
+  // The server advertises its configured PublicIP (e.g. a Tailscale IP or domain)
+  // when one is set — that's the address friends actually use. Fall back to the
+  // auto-detected internet IP when PublicIP is blank.
+  const shareIp = info ? (info.configuredIp || info.publicIp) : "";
+  const connectAddr = info ? `${shareIp}:${info.port}` : "";
 
   function copy() {
     navigator.clipboard.writeText(connectAddr);
@@ -63,12 +67,15 @@ export default function ConnectPage({ notify }: Props) {
           <span className="path" style={{ fontSize: 15 }}>
             {loading ? "…" : connectAddr}
           </span>
-          <button className="btn primary" onClick={copy} disabled={!info || info.publicIp === "unavailable"}>
+          <button className="btn primary" onClick={copy} disabled={!info || !shareIp || shareIp === "unavailable"}>
             Copy
           </button>
         </div>
         <p style={{ color: "var(--text-dim)", marginBottom: 0 }}>
           In Palworld: <strong>Join Multiplayer Server → type the address above</strong>.
+          {info?.configuredIp
+            ? " This uses your server's configured PublicIP (e.g. Tailscale / VPN / domain)."
+            : ""}
         </p>
       </div>
 
@@ -76,8 +83,14 @@ export default function ConnectPage({ notify }: Props) {
         <h2>Status</h2>
         <table className="table">
           <tbody>
+            {info?.configuredIp && (
+              <tr>
+                <td>Configured PublicIP (advertised)</td>
+                <td>{info.configuredIp}</td>
+              </tr>
+            )}
             <tr>
-              <td>Public IP</td>
+              <td>Detected public IP</td>
               <td>{info?.publicIp ?? "…"}</td>
             </tr>
             <tr>

@@ -185,6 +185,8 @@ export interface NetworkInfo {
   localIp: string;
   port: number;
   portListening: boolean;
+  /** The server's configured PublicIP (e.g. a Tailscale IP or domain), if set. */
+  configuredIp: string;
 }
 
 export interface ModInfo {

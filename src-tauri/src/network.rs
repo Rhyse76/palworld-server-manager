@@ -20,6 +20,8 @@ pub struct NetworkInfo {
     pub port: u16,
     /// Whether something (the server) is bound to the game port on this machine.
     pub port_listening: bool,
+    /// The server's configured `PublicIP` (e.g. a Tailscale IP or domain), if set.
+    pub configured_ip: String,
 }
 
 /// The server's game port from config (`PublicPort`), default 8211.
@@ -61,12 +63,24 @@ fn port_listening(port: u16) -> bool {
 }
 
 pub fn info(app: &AppHandle) -> NetworkInfo {
-    let port = game_port(app);
+    let fields = settings::install_dir(app).ok().and_then(|dir| config::read(&dir).ok());
+    let port = fields
+        .as_ref()
+        .and_then(|f| config::find(f, "PublicPort"))
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(8211);
+    let configured_ip = fields
+        .as_ref()
+        .and_then(|f| config::find(f, "PublicIP"))
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+        .unwrap_or_default();
     NetworkInfo {
         public_ip: public_ip(),
         local_ip: local_ipv4().map(|i| i.to_string()).unwrap_or_else(|| "unknown".into()),
         port,
         port_listening: port_listening(port),
+        configured_ip,
     }
 }
 
