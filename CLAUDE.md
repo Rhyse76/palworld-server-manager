@@ -75,6 +75,10 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
 - Differentiators: **connectivity/port-forward helper** (public IP + reachability + UPnP —
   the "friends can't connect" fix), off-site/cloud backups (paid-tier), metrics-history graphs,
   mod manager (local `.pak` + UE4SS/Lua), first-run setup wizard.
+- Restart Server button: graceful shutdown (REST `/save` + `/shutdown`) then auto-start once
+  the process exits. Easy — chain existing `server::stop`/`start` with a wait-for-exit.
+- Player IDs in the players list: REST `/players` already returns `userId` (Steam ID) and
+  `playerId` — surface both columns in the dashboard players table (currently name-only).
 - Email alerts (low priority — Discord already covers most users): add an Email card mirroring
   the Discord one, subscribing to the same automation events (up/down/crash/backup). Ship TWO
   easy routes in one card — (1) user-provided SMTP + app password via `lettre`, and (2) bring-
