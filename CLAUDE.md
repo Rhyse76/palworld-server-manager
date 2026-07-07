@@ -107,6 +107,17 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
     listing, and the updater endpoint URL are all Palworld-specific today.
   - Plan: keep shipping Palworld as-is; when ready, do the engine extraction ONCE with Palworld as
     adapter #1, then add ARK, then Enshrouded, under a game-neutral name.
+  - **DECIDED (2026-07): the game-neutral name is "RhyseGaming Server Manager"** (on-brand for
+    rhysegaming.com, game-neutral so it survives the shift). Rename is DEFERRED to the multi-game
+    shift to avoid a name/marketing mismatch while it's Palworld-only. Already done now: app
+    recolored to the RhyseGaming palette (navy/slate + blue `#3b82f6`, green for online). Also
+    doable independently now: MS Store **publisher identity = RhyseGaming (individual, not a
+    company)** — publisher can be RhyseGaming while the app stays the Palworld listing for now.
+  - Rename gotcha when it happens: KEEP the Tauri `bundle.identifier` stable (changing it makes the
+    installer a NEW app, not an upgrade). Repo rename is fine (GitHub 301-redirects the old updater
+    endpoint). Rename touches: in-app title/About, repo, updater endpoint, installer name, Store
+    listing, rhysegaming.com/palworld page. Also delete dead `src/App.css` (Vite template leftover,
+    not imported by `main.tsx`).
 
 ## Commands
 
