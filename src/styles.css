@@ -54,32 +54,25 @@ body {
 
 .brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px 20px;
+  gap: 4px;
+  padding: 4px 8px 18px;
 }
 
-.brand-mark {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-dim));
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  color: #08110d;
-}
-
-.brand-title {
-  font-weight: 600;
-  line-height: 1.15;
-}
-
-.brand-title small {
+.brand-logo {
+  width: 100%;
+  max-width: 168px;
+  height: auto;
   display: block;
+}
+
+.brand-sub {
   color: var(--text-dim);
-  font-weight: 400;
+  font-weight: 500;
   font-size: 11px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
 }
 
 .nav {

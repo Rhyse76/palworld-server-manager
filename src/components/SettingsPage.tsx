@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import logo from "../assets/logo.png";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -174,6 +175,11 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
 
       <div className="card">
         <h2>About</h2>
+        <img
+          src={logo}
+          alt="Rhyse Gaming"
+          style={{ width: 200, maxWidth: "100%", height: "auto", display: "block", margin: "0 0 10px" }}
+        />
         <p style={{ margin: "0 0 6px" }}>
           <strong>Palworld Server Manager</strong> · v0.4.1
         </p>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { check } from "@tauri-apps/plugin-updater";
+import logo from "./assets/logo.png";
 import { api, type AppConfig, type StatusInfo } from "./api";
 import ServerPage from "./components/ServerPage";
 import ConfigPage from "./components/ConfigPage";
@@ -107,17 +108,8 @@ export default function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="4.5" width="18" height="4" rx="1.4" fill="#08110d" />
-              <rect x="3" y="10" width="18" height="4" rx="1.4" fill="#08110d" />
-              <rect x="3" y="15.5" width="18" height="4" rx="1.4" fill="#08110d" />
-            </svg>
-          </div>
-          <div className="brand-title">
-            Palworld
-            <small>Server Manager</small>
-          </div>
+          <img className="brand-logo" src={logo} alt="Rhyse Gaming" />
+          <div className="brand-sub">Palworld Server Manager</div>
         </div>
         <nav className="nav">
           {NAV.map((n) => (
