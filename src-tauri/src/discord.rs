@@ -22,7 +22,7 @@ pub enum Event {
     Test,
 }
 
-const TEAL: u32 = 0x33c9a3;
+const BLUE: u32 = 0x3b82f6; // RhyseGaming brand accent
 const RED: u32 = 0xe5534b;
 const AMBER: u32 = 0xe3b341;
 const GRAY: u32 = 0x8b98a5;
@@ -36,7 +36,7 @@ pub fn notify(app: &AppHandle, event: Event) {
     }
 
     let (allowed, title, desc, color) = match &event {
-        Event::ServerStarted => (cfg.notify_server, "🟢 Server started".into(), String::new(), TEAL),
+        Event::ServerStarted => (cfg.notify_server, "🟢 Server started".into(), String::new(), BLUE),
         Event::ServerStopped => (cfg.notify_server, "🔴 Server stopped".into(), String::new(), GRAY),
         Event::Crashed => (
             cfg.notify_server,
@@ -49,13 +49,13 @@ pub fn notify(app: &AppHandle, event: Event) {
             cfg.notify_backups,
             "💾 Backup created".into(),
             name.clone(),
-            TEAL,
+            BLUE,
         ),
         Event::PlayerJoined(name) => (
             cfg.notify_players,
             format!("➡️ {name} joined"),
             String::new(),
-            TEAL,
+            BLUE,
         ),
         Event::PlayerLeft(name) => (
             cfg.notify_players,
@@ -63,7 +63,7 @@ pub fn notify(app: &AppHandle, event: Event) {
             String::new(),
             GRAY,
         ),
-        Event::Test => (true, "✅ Test message".into(), "Discord notifications are working.".into(), TEAL),
+        Event::Test => (true, "✅ Test message".into(), "Discord notifications are working.".into(), BLUE),
     };
     if !allowed {
         return;

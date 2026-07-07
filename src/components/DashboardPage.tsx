@@ -186,7 +186,7 @@ export default function DashboardPage({ notify }: Props) {
         <div className="card">
           <h2>Recent activity ({history.length} samples · ~5s each)</h2>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-            <Spark label="Players" color="#33c9a3" values={history.map((h) => h.players)} />
+            <Spark label="Players" color="#22c55e" values={history.map((h) => h.players)} />
             <Spark label="Server FPS" color="#3b82f6" values={history.map((h) => h.fps)} />
           </div>
         </div>

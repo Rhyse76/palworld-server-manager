@@ -1,13 +1,17 @@
 :root {
-  --bg: #0f1419;
-  --bg-elevated: #171e26;
-  --bg-card: #1b232d;
-  --border: #2a3542;
+  /* RhyseGaming brand: navy/slate surfaces + blue glow accent (matches
+     rhysegaming.com). Green is reserved for "online/ok", red for "off/bad". */
+  --bg: #0b1220;
+  --bg-elevated: #0f172a;
+  --bg-card: #131d2f;
+  --border: #1e293b;
   --text: #e6edf3;
-  --text-dim: #8b98a5;
-  --accent: #33c9a3;
-  --accent-hover: #45dbb5;
-  --accent-dim: #1c6a58;
+  --text-dim: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-dim: #1e3a8a;
+  --ok: #22c55e;
+  --ok-dim: #16643a;
   --danger: #e5534b;
   --danger-hover: #f26a63;
   --warn: #e3b341;
@@ -185,12 +189,12 @@ body {
 }
 
 .pill.ok {
-  color: var(--accent);
-  border-color: var(--accent-dim);
+  color: var(--ok);
+  border-color: var(--ok-dim);
 }
 .pill.ok .dot {
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
+  background: var(--ok);
+  box-shadow: 0 0 8px var(--ok);
 }
 .pill.off .dot {
   background: var(--text-dim);
@@ -222,7 +226,7 @@ button.btn:hover:not(:disabled) {
 button.btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #08110d;
+  color: #ffffff;
   font-weight: 600;
 }
 button.btn.primary:hover:not(:disabled) {
