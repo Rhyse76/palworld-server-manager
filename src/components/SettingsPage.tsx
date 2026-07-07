@@ -181,7 +181,7 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
           style={{ width: 200, maxWidth: "100%", height: "auto", display: "block", margin: "0 0 10px" }}
         />
         <p style={{ margin: "0 0 6px" }}>
-          <strong>Palworld Server Manager</strong> · v0.4.1
+          <strong>Palworld Server Manager</strong> · v0.4.2
         </p>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
           An unofficial, community-made tool for running a Palworld dedicated server. Not
