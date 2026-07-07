@@ -88,8 +88,25 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
   DEFER OAuth/XOAUTH2 SMTP: code is a few days, but Gmail's restricted mail scope needs an
   annual Google CASA security assessment + Azure app registration — only worth it as a funded
   paid-tier feature.
-- Big bets: remote/web access (headless service + web UI), multi-game support (ARK/Valheim/etc.;
-  user already runs ARK via `ark-panel`).
+- Big bets: remote/web access (headless service + web UI).
+- **Multi-game support (ONE app, adapter architecture — NOT separate apps per game).** User wants
+  a single manager for Palworld + ARK: Survival Ascended + Enshrouded (and possibly Valheim). The
+  clean structure: a `Game` trait each game implements (`app_id`, `server_exe`, save paths, default
+  ports, config model/schema, optional live-control client, mods), driven by the existing shared
+  engine (SteamCMD, process, backups, automation/watchdog, Discord, UPnP, metrics, updater, UI
+  shell = ~60-70% reused). Games stay isolated behind the trait so they don't step on each other.
+  - Effort: one-time "extract the engine" refactor (~1-2 wks), biggest piece = making the Config
+    page **schema-driven** instead of hardcoded to Palworld's OptionSettings blob. Then per game:
+    ARK ~3-5 days, Enshrouded ~2-3 days.
+  - Per-game live-control reality (adapter advertises capabilities; UI hides unsupported):
+    Palworld = REST + RCON (richest); ARK:SA = **RCON only** (finally needs the backlogged
+    `rcon.rs`); Enshrouded = **no live protocol** (install/update/start/stop/backup/config/
+    automation only — no players/kick/announce). Config formats differ: Palworld INI OptionSettings
+    blob, ARK `GameUserSettings.ini` + `Game.ini` + launch args, Enshrouded JSON.
+  - Non-code cost: **rebrand** off "Palworld" — repo name, rhysegaming.com/palworld page, MS Store
+    listing, and the updater endpoint URL are all Palworld-specific today.
+  - Plan: keep shipping Palworld as-is; when ready, do the engine extraction ONCE with Palworld as
+    adapter #1, then add ARK, then Enshrouded, under a game-neutral name.
 
 ## Commands
 
