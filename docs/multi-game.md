@@ -116,7 +116,9 @@ The UI hides unsupported controls based on `spec.live_control` + finer per-featu
    `write_config`/`import_config`. *Remaining polish (not blocking):* per-game field **schema**
    (labels/groups/help) for a nicer Config page, and game-aware copy (the "PalWorldSettings.ini"
    labels in `ConfigPage.tsx`).
-4. **Live control behind a trait** — `rest.rs` becomes Palworld's live client; add `rcon.rs`.
+4. **Live control behind a trait** — `rest.rs` becomes Palworld's live client; wrap them in a
+   trait. (`rcon.rs` client ✅ built + unit-tested; the *trait abstraction* is designed alongside
+   the ARK adapter so it's shaped against a real second case.)
 5. **Per-profile game selection** — each server profile pins a game; `active()` reads it; first-run
    wizard asks which game; sidebar game switcher; game-aware UI copy/labels.
 6. **Add ARK adapter** (~3–5 days), then **Enshrouded** (~2–3 days).
