@@ -19,7 +19,6 @@ use crate::settings;
 use crate::util::CommandExt;
 
 const STEAMCMD_URL: &str = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip";
-const PALWORLD_APP_ID: &str = "2394010";
 
 pub fn steamcmd_exe(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(settings::steamcmd_dir(app)?.join("steamcmd.exe"))
@@ -99,7 +98,7 @@ fn run_once(app: &AppHandle, steamcmd: &PathBuf, install_dir: &PathBuf) -> Resul
         .arg("+login")
         .arg("anonymous")
         .arg("+app_update")
-        .arg(PALWORLD_APP_ID)
+        .arg(crate::game::active().spec().steam_app_id)
         .arg("validate")
         .arg("+quit")
         .stdout(Stdio::piped())

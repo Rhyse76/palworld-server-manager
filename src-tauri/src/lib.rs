@@ -4,6 +4,7 @@ mod bans;
 mod config;
 mod detect;
 mod discord;
+mod game;
 mod logs;
 mod mods;
 mod network;

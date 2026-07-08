@@ -13,7 +13,10 @@ use tauri::AppHandle;
 
 use crate::{rest, server, settings, steamcmd};
 
-const APP_ID: &str = "2394010";
+/// Steam app id of the active game's dedicated server.
+fn app_id() -> &'static str {
+    crate::game::active().spec().steam_app_id
+}
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -27,9 +30,10 @@ pub struct UpdateStatus {
 
 /// Read the installed build id out of the Steam app manifest.
 fn installed_build(install_dir: &Path) -> Option<String> {
+    let app_id = app_id();
     let acf = install_dir
         .join("steamapps")
-        .join(format!("appmanifest_{APP_ID}.acf"));
+        .join(format!("appmanifest_{app_id}.acf"));
     let text = fs::read_to_string(acf).ok()?;
     let line = text.lines().find(|l| l.contains("\"buildid\""))?;
     line.split('"').nth(3).map(|s| s.to_string())
@@ -41,13 +45,14 @@ fn latest_build() -> Option<String> {
         .timeout(Duration::from_secs(8))
         .build()
         .ok()?;
+    let app_id = app_id();
     let json: serde_json::Value = client
-        .get(format!("https://api.steamcmd.net/v1/info/{APP_ID}"))
+        .get(format!("https://api.steamcmd.net/v1/info/{app_id}"))
         .send()
         .ok()?
         .json()
         .ok()?;
-    json["data"][APP_ID]["depots"]["branches"]["public"]["buildid"]
+    json["data"][app_id]["depots"]["branches"]["public"]["buildid"]
         .as_str()
         .map(|s| s.to_string())
 }
