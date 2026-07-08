@@ -14,11 +14,10 @@ use tauri::{AppHandle, Manager};
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 
+use crate::game;
 use crate::server;
 use crate::settings;
 use crate::util::CommandExt;
-
-const SAVEGAMES_REL: &str = "Pal/Saved/SaveGames";
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,7 +38,7 @@ pub fn backups_dir(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 fn savegames_dir(install_dir: &Path) -> PathBuf {
-    install_dir.join(SAVEGAMES_REL)
+    install_dir.join(game::active().spec().saves_rel)
 }
 
 pub fn create(app: &AppHandle, install_dir: &Path) -> Result<String, String> {

@@ -8,9 +8,9 @@
 //!
 //! See `docs/multi-game.md` for the full design and migration plan.
 
-// Migration in progress: only `steam_app_id` is routed through the spec so far
-// (steamcmd/updates). The remaining fields/variants are consumed in later steps
-// (server, config, saves, backups, mods, network) — allow dead_code until then.
+// Migration in progress: the engine now routes launcher/process/paths/port/app-id
+// through the spec. Still unconsumed until later steps: `id` and `display_name`
+// (per-profile game selection + UI labels) and `live_control` (capability gating).
 #![allow(dead_code)]
 
 mod palworld;

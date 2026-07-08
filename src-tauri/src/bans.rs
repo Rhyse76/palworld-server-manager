@@ -8,9 +8,11 @@ use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
 
+use crate::game;
+
 fn find_banlist(install_dir: &Path) -> Option<PathBuf> {
-    // Expected location.
-    let base = install_dir.join("Pal").join("Saved").join("SaveGames").join("0");
+    // Expected location: <saves>/0/<worldid>/banlist.txt.
+    let base = install_dir.join(game::active().spec().saves_rel).join("0");
     if let Ok(rd) = fs::read_dir(&base) {
         for entry in rd.flatten() {
             let candidate = entry.path().join("banlist.txt");

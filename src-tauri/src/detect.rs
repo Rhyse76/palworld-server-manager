@@ -98,13 +98,7 @@ fn consider(out: &mut Vec<DetectedInstall>, seen: &mut HashSet<String>, path: Pa
     if !seen.insert(key) {
         return;
     }
-    let has_config = path
-        .join("Pal")
-        .join("Saved")
-        .join("Config")
-        .join("WindowsServer")
-        .join("PalWorldSettings.ini")
-        .exists();
+    let has_config = path.join(crate::game::active().spec().config_rel).exists();
     out.push(DetectedInstall {
         path: path.to_string_lossy().to_string(),
         source: source.to_string(),

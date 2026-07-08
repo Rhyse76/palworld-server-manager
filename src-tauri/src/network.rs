@@ -10,7 +10,7 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::AppHandle;
 
-use crate::{config, settings};
+use crate::{config, game, settings};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,7 +31,7 @@ pub fn game_port(app: &AppHandle) -> u16 {
         .and_then(|dir| config::read(&dir).ok())
         .and_then(|fields| config::find(&fields, "PublicPort"))
         .and_then(|v| v.parse().ok())
-        .unwrap_or(8211)
+        .unwrap_or(game::active().spec().default_game_port)
 }
 
 fn public_ip() -> String {
@@ -68,7 +68,7 @@ pub fn info(app: &AppHandle) -> NetworkInfo {
         .as_ref()
         .and_then(|f| config::find(f, "PublicPort"))
         .and_then(|v| v.parse().ok())
-        .unwrap_or(8211);
+        .unwrap_or(game::active().spec().default_game_port);
     let configured_ip = fields
         .as_ref()
         .and_then(|f| config::find(f, "PublicIP"))

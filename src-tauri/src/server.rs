@@ -10,14 +10,11 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::game;
 use crate::util::CommandExt;
 
-const LAUNCHER_IMAGE: &str = "PalServer.exe";
-/// tasklist/taskkill filter matching every Palworld server process.
-const IMAGE_FILTER: &str = "IMAGENAME eq PalServer*";
-
 pub fn palserver_exe(install_dir: &Path) -> PathBuf {
-    install_dir.join(LAUNCHER_IMAGE)
+    install_dir.join(game::active().spec().server_launcher)
 }
 
 pub fn is_installed(install_dir: &Path) -> bool {
@@ -27,13 +24,14 @@ pub fn is_installed(install_dir: &Path) -> bool {
 /// Whether the shipping server process is currently running. We require the
 /// "Shipping" process specifically, so a lingering launcher alone doesn't count.
 pub fn is_running() -> bool {
+    let spec = game::active().spec();
     let output = Command::new("tasklist")
-        .args(["/FI", IMAGE_FILTER, "/NH"])
+        .args(["/FI", spec.process_match, "/NH"])
         .hidden()
         .output();
 
     match output {
-        Ok(out) => String::from_utf8_lossy(&out.stdout).contains("Shipping"),
+        Ok(out) => String::from_utf8_lossy(&out.stdout).contains(spec.process_marker),
         Err(_) => false,
     }
 }
@@ -68,7 +66,7 @@ pub fn start(install_dir: &Path, hide_console: bool) -> Result<(), String> {
 /// Force-stop every Palworld server process (launcher + shipping variant).
 pub fn stop() -> Result<(), String> {
     Command::new("taskkill")
-        .args(["/F", "/T", "/FI", IMAGE_FILTER])
+        .args(["/F", "/T", "/FI", game::active().spec().process_match])
         .hidden()
         .output()
         .map_err(|e| format!("failed to stop server: {e}"))?;

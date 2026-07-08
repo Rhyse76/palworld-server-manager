@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use flate2::read::ZlibDecoder;
 use serde::Serialize;
 
-const SAVEGAMES_REL: &str = "Pal/Saved/SaveGames";
+use crate::game;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,7 +27,7 @@ pub struct SaveInfo {
 
 /// Locate the world's `Level.sav` (`Pal/Saved/SaveGames/0/<worldid>/Level.sav`).
 pub fn find_level_sav(install_dir: &Path) -> Option<PathBuf> {
-    let base = install_dir.join(SAVEGAMES_REL).join("0");
+    let base = install_dir.join(game::active().spec().saves_rel).join("0");
     for entry in fs::read_dir(base).ok()?.flatten() {
         let candidate = entry.path().join("Level.sav");
         if candidate.exists() {

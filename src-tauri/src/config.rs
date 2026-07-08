@@ -16,8 +16,8 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-const CONFIG_REL: &str = "Pal/Saved/Config/WindowsServer/PalWorldSettings.ini";
-const DEFAULT_CONFIG: &str = "DefaultPalWorldSettings.ini";
+use crate::game;
+
 const HEADER: &str = "[/Script/Pal.PalGameWorldSettings]";
 
 /// A single setting from the `OptionSettings` blob.
@@ -33,7 +33,7 @@ pub struct ConfigField {
 }
 
 fn config_path(install_dir: &Path) -> PathBuf {
-    install_dir.join(CONFIG_REL)
+    install_dir.join(game::active().spec().config_rel)
 }
 
 /// Find a field's logical value by key.
@@ -68,7 +68,10 @@ fn parse_ini(path: &Path) -> Option<Vec<ConfigField>> {
 /// a partial live config (e.g. one written by "Enable REST API") still shows the
 /// complete set with the user's overrides applied.
 pub fn read(install_dir: &Path) -> Result<Vec<ConfigField>, String> {
-    let default_fields = parse_ini(&install_dir.join(DEFAULT_CONFIG));
+    let default_fields = game::active()
+        .spec()
+        .default_config
+        .and_then(|d| parse_ini(&install_dir.join(d)));
     let live_fields = parse_ini(&config_path(install_dir));
 
     let mut fields = default_fields.unwrap_or_default();

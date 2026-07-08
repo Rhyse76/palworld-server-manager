@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-const MODS_REL: &str = "Pal/Content/Paks/~mods";
+use crate::game;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,7 +21,12 @@ pub struct ModInfo {
 }
 
 pub fn mods_dir(install_dir: &Path) -> PathBuf {
-    install_dir.join(MODS_REL)
+    // Games without a mods dir advertise `mods_rel: None`; the UI hides the Mods
+    // page for them, so this sentinel path simply never exists / lists nothing.
+    match game::active().spec().mods_rel {
+        Some(rel) => install_dir.join(rel),
+        None => install_dir.join(".no-mods"),
+    }
 }
 
 fn sanitize(name: &str) -> Result<(), String> {
