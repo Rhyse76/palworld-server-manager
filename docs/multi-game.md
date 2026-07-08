@@ -107,15 +107,18 @@ The UI hides unsupported controls based on `spec.live_control` + finer per-featu
 
 ## Migration order
 
-1. **Scaffold `game` module** — `GameSpec` + `Game` trait + `Palworld` adapter + `active()`.
-   Route the trivial constants (Steam app id, later launcher/process/paths) through `spec()`.
-   *No behavior change.* ← **starting here**
-2. **Route the rest of the engine** through `spec()` — `server.rs`, `config.rs` paths, `saves.rs`,
-   `backups.rs`, `mods.rs`, `bans.rs`, `network.rs` default port.
-3. **Config becomes schema-driven** — adapter provides the field schema; Config page renders it.
+1. ✅ **Scaffold `game` module** — `GameSpec` + `Game` trait + `Palworld` adapter + `active()`.
+   Routed the Steam app id through `spec()`. *No behavior change.*
+2. ✅ **Route the rest of the engine** through `spec()` — `server.rs`, `config.rs`/`detect.rs` paths,
+   `saves.rs`, `backups.rs`, `mods.rs`, `bans.rs`, `network.rs` default port.
+3. ✅ **Config parse/write behind the trait** — Palworld INI format moved into the adapter
+   (`game/palworld/config.rs`); `config.rs` is shared-only and delegates via `read_config`/
+   `write_config`/`import_config`. *Remaining polish (not blocking):* per-game field **schema**
+   (labels/groups/help) for a nicer Config page, and game-aware copy (the "PalWorldSettings.ini"
+   labels in `ConfigPage.tsx`).
 4. **Live control behind a trait** — `rest.rs` becomes Palworld's live client; add `rcon.rs`.
 5. **Per-profile game selection** — each server profile pins a game; `active()` reads it; first-run
-   wizard asks which game.
+   wizard asks which game; sidebar game switcher; game-aware UI copy/labels.
 6. **Add ARK adapter** (~3–5 days), then **Enshrouded** (~2–3 days).
 7. **Rebrand** — repo, updater endpoint, installer name (keep bundle identifier stable!), site,
    Store listing, in-app name → RhyseGaming Server Manager.
