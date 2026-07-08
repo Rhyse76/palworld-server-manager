@@ -118,6 +118,7 @@ export const api = {
   installServer: () => invoke<void>("install_server"),
   startServer: () => invoke<void>("start_server"),
   stopServer: () => invoke<void>("stop_server"),
+  restartServer: () => invoke<void>("restart_server"),
   readConfig: () => invoke<ConfigField[]>("read_config"),
   writeConfig: (fields: ConfigField[]) => invoke<void>("write_config", { fields }),
   detectInstalls: () => invoke<DetectedInstall[]>("detect_installs"),

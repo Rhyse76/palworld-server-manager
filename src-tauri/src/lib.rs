@@ -89,6 +89,31 @@ fn stop_server(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Gracefully restart: save + shut down (with a short player warning) then start
+/// again. Runs in the background and returns immediately; the UI polls status.
+#[tauri::command]
+fn restart_server(app: AppHandle) -> Result<(), String> {
+    let install_dir = settings::install_dir(&app)?;
+    // If it's not running, a "restart" is just a start.
+    if !server::is_running() {
+        server::start(&install_dir, settings::hide_console(&app))?;
+        automation::set_supervise(&app, true);
+        logs::record(&app, "Server started.");
+        discord::notify(&app, discord::Event::ServerStarted);
+        return Ok(());
+    }
+    let hide = settings::hide_console(&app);
+    // Suspend the crash watchdog so it doesn't race the intentional restart.
+    automation::set_supervise(&app, false);
+    let app2 = app.clone();
+    std::thread::spawn(move || {
+        automation::run_restart(&app2, hide, 10, "Restart");
+        automation::set_supervise(&app2, true);
+        discord::notify(&app2, discord::Event::ServerStarted);
+    });
+    Ok(())
+}
+
 #[tauri::command]
 fn read_config(app: AppHandle) -> Result<Vec<config::ConfigField>, String> {
     let install_dir = settings::install_dir(&app)?;
@@ -366,6 +391,7 @@ pub fn run() {
             install_server,
             start_server,
             stop_server,
+            restart_server,
             read_config,
             write_config,
             detect_installs,

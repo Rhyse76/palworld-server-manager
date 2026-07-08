@@ -227,6 +227,8 @@ export default function DashboardPage({ notify }: Props) {
                 <th>Name</th>
                 <th>Level</th>
                 <th>Ping</th>
+                <th>Steam ID</th>
+                <th>Player UID</th>
                 <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
@@ -236,6 +238,12 @@ export default function DashboardPage({ notify }: Props) {
                   <td>{p.name || "(unknown)"}</td>
                   <td>{p.level || "—"}</td>
                   <td>{p.ping ? `${p.ping.toFixed(0)} ms` : "—"}</td>
+                  <td>
+                    <IdCell value={p.userId} label="Steam ID" notify={notify} />
+                  </td>
+                  <td>
+                    <IdCell value={p.playerId} label="Player UID" notify={notify} />
+                  </td>
                   <td style={{ textAlign: "right" }}>
                     <button className="btn" onClick={() => moderate(p, "kick")}>
                       Kick
@@ -345,5 +353,41 @@ function Tile({ label, value }: { label: string; value: string }) {
       <div className="tile-value">{value}</div>
       <div className="tile-label">{label}</div>
     </div>
+  );
+}
+
+// A player identifier (Steam ID / player UID): monospace, truncated with the full
+// value on hover, and click-to-copy since admins routinely need to paste these.
+function IdCell({
+  value,
+  label,
+  notify,
+}: {
+  value: string;
+  label: string;
+  notify: (msg: string, error?: boolean) => void;
+}) {
+  if (!value) return <span style={{ color: "var(--text-dim)" }}>—</span>;
+  return (
+    <code
+      title={`${value} — click to copy`}
+      onClick={() => {
+        navigator.clipboard.writeText(value);
+        notify(`${label} copied.`);
+      }}
+      style={{
+        cursor: "pointer",
+        fontSize: 12,
+        color: "var(--text-dim)",
+        maxWidth: 150,
+        display: "inline-block",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        verticalAlign: "bottom",
+      }}
+    >
+      {value}
+    </code>
   );
 }

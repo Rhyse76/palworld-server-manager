@@ -98,7 +98,7 @@ fn tick(app: &AppHandle) {
                     // Leave the timer 'due' so we retry once the server empties.
                 } else {
                     *state.last_restart.lock().unwrap() = t;
-                    run_restart(app, cfg.hide_server_console);
+                    run_restart(app, cfg.hide_server_console, 30, "Scheduled restart");
                     return; // skip watchdog this tick (server is cycling)
                 }
             } else {
@@ -202,35 +202,39 @@ fn prune(app: &AppHandle, keep: u32) {
     }
 }
 
-fn run_restart(app: &AppHandle, hide_console: bool) {
+/// Gracefully restart the server: warn players, save + shut down via REST (waiting
+/// `countdown` seconds), wait for it to exit, then start it back up. Falls back to
+/// a force stop when the REST shutdown isn't available. Blocking — call off the UI
+/// thread. `label` prefixes the activity-log lines (e.g. "Scheduled restart").
+pub fn run_restart(app: &AppHandle, hide_console: bool, countdown: i64, label: &str) {
     let dir = match settings::install_dir(app) {
         Ok(d) => d,
         Err(_) => return,
     };
-    logs::record(app, "Scheduled restart: warning players and shutting down (30s)…");
-    discord::notify(app, discord::Event::Restarting("Scheduled restart in 30 seconds.".into()));
-    let _ = tauri::async_runtime::block_on(rest::announce(
-        &dir,
-        "Server will restart in 30 seconds.",
-    ));
-    let _ = tauri::async_runtime::block_on(rest::shutdown(
-        &dir,
-        30,
-        "Server will restart in 30 seconds.",
-    ));
-
-    // Wait for it to go down (up to ~2 min), then force-stop as a safety net.
-    for _ in 0..40 {
-        if !server::is_running() {
-            break;
-        }
-        std::thread::sleep(Duration::from_secs(3));
+    let secs = countdown.max(0);
+    let notice = format!("Server will restart in {secs} seconds.");
+    logs::record(app, &format!("{label}: warning players and shutting down ({secs}s)…"));
+    discord::notify(app, discord::Event::Restarting(notice.clone()));
+    if secs > 0 {
+        let _ = tauri::async_runtime::block_on(rest::announce(&dir, &notice));
     }
-    let _ = server::stop();
+    let shutdown_ok = tauri::async_runtime::block_on(rest::shutdown(&dir, secs, &notice)).is_ok();
+
+    // If the graceful shutdown was accepted, wait for it to go down (up to ~2 min).
+    // Otherwise (REST off) skip the wait and force-stop straight away.
+    if shutdown_ok {
+        for _ in 0..40 {
+            if !server::is_running() {
+                break;
+            }
+            std::thread::sleep(Duration::from_secs(3));
+        }
+    }
+    let _ = server::stop(); // force-stop as a safety net / primary when REST is off
     std::thread::sleep(Duration::from_secs(2));
 
     match server::start(&dir, hide_console) {
-        Ok(()) => logs::record(app, "Scheduled restart: server started."),
-        Err(e) => logs::record(app, &format!("Scheduled restart: failed to start: {e}")),
+        Ok(()) => logs::record(app, &format!("{label}: server started.")),
+        Err(e) => logs::record(app, &format!("{label}: failed to start: {e}")),
     }
 }

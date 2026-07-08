@@ -90,12 +90,19 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
     }
   }
 
-  async function control(action: "start" | "stop") {
+  async function control(action: "start" | "stop" | "restart") {
     setBusy(true);
     try {
       if (action === "start") await api.startServer();
-      else await api.stopServer();
-      notify(action === "start" ? "Server started." : "Server stopped.");
+      else if (action === "stop") await api.stopServer();
+      else await api.restartServer();
+      notify(
+        action === "start"
+          ? "Server started."
+          : action === "stop"
+            ? "Server stopped."
+            : "Restarting — saving, warning players (10s), then starting back up.",
+      );
     } catch (e) {
       notify(String(e), true);
     } finally {
@@ -211,6 +218,13 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
             Start server
           </button>
           <button
+            className="btn"
+            onClick={() => control("restart")}
+            disabled={!running || busy || installing}
+          >
+            Restart server
+          </button>
+          <button
             className="btn danger"
             onClick={() => control("stop")}
             disabled={!running || busy}
@@ -218,6 +232,10 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
             Stop server
           </button>
         </div>
+        <p style={{ color: "var(--text-dim)", margin: "12px 0 0", fontSize: 13 }}>
+          Restart gracefully saves the world and warns players (needs the REST API on);
+          without it, it force-restarts.
+        </p>
       </div>
 
       <div className="card">
