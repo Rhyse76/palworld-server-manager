@@ -9,9 +9,14 @@
 //! See `docs/multi-game.md` for the full design and migration plan.
 
 // Migration in progress: the engine now routes launcher/process/paths/port/app-id
-// through the spec. Still unconsumed until later steps: `id` and `display_name`
-// (per-profile game selection + UI labels) and `live_control` (capability gating).
+// and config parse/write through the adapter. Still unconsumed until later steps:
+// `id` and `display_name` (per-profile game selection + UI labels) and
+// `live_control` (capability gating).
 #![allow(dead_code)]
+
+use std::path::Path;
+
+use crate::config::ConfigField;
 
 mod palworld;
 
@@ -59,6 +64,16 @@ pub struct GameSpec {
 /// parsing, live-control client) will be added as methods as the refactor proceeds.
 pub trait Game: Send + Sync {
     fn spec(&self) -> &'static GameSpec;
+
+    /// Read the game's config file(s) into a unified field list, with shipped
+    /// defaults merged in where the game provides them.
+    fn read_config(&self, install_dir: &Path) -> Result<Vec<ConfigField>, String>;
+
+    /// Write a unified field list back to the game's config file(s).
+    fn write_config(&self, install_dir: &Path, fields: &[ConfigField]) -> Result<(), String>;
+
+    /// Parse a game-native config file (e.g. an imported settings file) into fields.
+    fn import_config(&self, path: &Path) -> Result<Vec<ConfigField>, String>;
 }
 
 /// The currently active game.
