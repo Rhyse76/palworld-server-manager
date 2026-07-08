@@ -23,7 +23,7 @@
   <Identity
     Name="__PACKAGE_IDENTITY_NAME__"
     Publisher="__PUBLISHER_ID__"
-    Version="0.4.2.0"
+    Version="0.4.3.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
