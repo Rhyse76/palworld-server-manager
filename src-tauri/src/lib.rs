@@ -8,6 +8,7 @@ mod game;
 mod logs;
 mod mods;
 mod network;
+mod rcon;
 mod rest;
 mod saves;
 mod server;
