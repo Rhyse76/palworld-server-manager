@@ -61,6 +61,13 @@ pub struct GameSpec {
 pub trait Game: Send + Sync {
     fn spec(&self) -> &'static GameSpec;
 
+    /// Command-line arguments to launch the server with, derived from the install
+    /// as needed (e.g. ARK's `Map?listen?Port=...?RCONEnabled=True` + `-flags`).
+    /// Defaults to none — Palworld's launcher needs no arguments.
+    fn launch_args(&self, _install_dir: &Path) -> Vec<String> {
+        Vec::new()
+    }
+
     /// Read the game's config file(s) into a unified field list, with shipped
     /// defaults merged in where the game provides them.
     fn read_config(&self, install_dir: &Path) -> Result<Vec<ConfigField>, String>;

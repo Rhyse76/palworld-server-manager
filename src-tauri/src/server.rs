@@ -52,6 +52,7 @@ pub fn start(install_dir: &Path, hide_console: bool) -> Result<(), String> {
 
     let mut command = Command::new(&exe);
     command.current_dir(install_dir);
+    command.args(game::active().launch_args(install_dir)); // empty for Palworld
     if hide_console {
         command.hidden();
     } else {
