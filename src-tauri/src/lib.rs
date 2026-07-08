@@ -45,6 +45,39 @@ fn get_app_config(app: AppHandle) -> settings::AppConfig {
     settings::load(&app)
 }
 
+/// Metadata about the active game, so the UI can label things and gate features
+/// (Config file name, whether mods are supported, what live control it has).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GameInfo {
+    id: String,
+    display_name: String,
+    config_file: String,
+    has_mods: bool,
+    live_control: String,
+}
+
+#[tauri::command]
+fn game_info() -> GameInfo {
+    let s = game::active().spec();
+    let config_file = std::path::Path::new(s.config_rel)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| s.config_rel.to_string());
+    GameInfo {
+        id: s.id.to_string(),
+        display_name: s.display_name.to_string(),
+        config_file,
+        has_mods: s.mods_rel.is_some(),
+        live_control: match s.live_control {
+            game::LiveControl::RestApi => "rest",
+            game::LiveControl::Rcon => "rcon",
+            game::LiveControl::None => "none",
+        }
+        .to_string(),
+    }
+}
+
 /// Point the active profile at a different install folder.
 #[tauri::command]
 fn set_install_dir(app: AppHandle, path: String) -> Result<(), String> {
@@ -388,6 +421,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_status,
             get_app_config,
+            game_info,
             set_install_dir,
             install_server,
             start_server,

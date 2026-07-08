@@ -8,6 +8,15 @@ export interface StatusInfo {
   steamcmdReady: boolean;
 }
 
+export interface GameInfo {
+  id: string;
+  displayName: string;
+  /** Base name of the config file, e.g. "PalWorldSettings.ini". */
+  configFile: string;
+  hasMods: boolean;
+  liveControl: "rest" | "rcon" | "none";
+}
+
 export interface ServerProfile {
   id: string;
   name: string;
@@ -114,6 +123,7 @@ export interface EnableResult {
 export const api = {
   getStatus: () => invoke<StatusInfo>("get_status"),
   getAppConfig: () => invoke<AppConfig>("get_app_config"),
+  gameInfo: () => invoke<GameInfo>("game_info"),
   setInstallDir: (path: string) => invoke<void>("set_install_dir", { path }),
   installServer: () => invoke<void>("install_server"),
   startServer: () => invoke<void>("start_server"),

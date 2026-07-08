@@ -8,12 +8,6 @@
 //!
 //! See `docs/multi-game.md` for the full design and migration plan.
 
-// Migration in progress: the engine now routes launcher/process/paths/port/app-id
-// and config parse/write through the adapter. Still unconsumed until later steps:
-// `id` and `display_name` (per-profile game selection + UI labels) and
-// `live_control` (capability gating).
-#![allow(dead_code)]
-
 use std::path::Path;
 
 use crate::config::ConfigField;
@@ -21,6 +15,8 @@ use crate::config::ConfigField;
 mod palworld;
 
 /// How a game exposes live control (players, kick/ban, announce) while running.
+// `Rcon`/`None` aren't constructed until the ARK/Enshrouded adapters land.
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LiveControl {
     /// HTTP REST admin API (Palworld).

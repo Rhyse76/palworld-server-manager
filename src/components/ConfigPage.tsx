@@ -12,6 +12,11 @@ export default function ConfigPage({ notify }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
+  const [configFile, setConfigFile] = useState("the config file");
+
+  useEffect(() => {
+    api.gameInfo().then((g) => setConfigFile(g.configFile)).catch(() => {});
+  }, []);
 
   async function load() {
     try {
@@ -63,7 +68,7 @@ export default function ConfigPage({ notify }: Props) {
 
   async function importPreset() {
     const src = await open({
-      title: "Import config preset or PalWorldSettings.ini",
+      title: `Import config preset or ${configFile}`,
       filters: [
         { name: "Config", extensions: ["json", "ini"] },
         { name: "All files", extensions: ["*"] },
@@ -91,7 +96,7 @@ export default function ConfigPage({ notify }: Props) {
         <div className="page-head">
           <div>
             <h1>Configuration</h1>
-            <p>Edit every setting in PalWorldSettings.ini.</p>
+            <p>Edit every setting in {configFile}.</p>
           </div>
         </div>
         <div className="card">
@@ -117,7 +122,7 @@ export default function ConfigPage({ notify }: Props) {
         <div>
           <h1>Configuration</h1>
           <p>
-            {fields.length} settings from PalWorldSettings.ini · changes apply on next
+            {fields.length} settings from {configFile} · changes apply on next
             server restart.
           </p>
         </div>
