@@ -101,6 +101,39 @@ ARK adapter likely keeps its own richer internal field struct and maps to/from t
 `ConfigField` for the UI (possibly extending `ConfigField` with an optional stable id). Decide this
 at the start of the ARK config work.
 
+## Reference: how an existing ARK manager organizes it (user screenshots)
+
+~26 screenshots of "ARK Ascended Server Manager v0.8.7" in `C:\Users\Rhyse\Documents\ark-samples\`.
+Used for **information architecture only** — what to surface and how to group it. We build our own
+layout in the RhyseGaming look; not cloning their visuals.
+
+Takeaways (from a sampled subset — full set reviewed per-group at build time):
+
+- **Per-server tabs** (Dashboard + one tab per server, each showing RUNNING/STOPPED + player count)
+  → validates our per-profile model: each profile = a server, shown with live status.
+- **Server header bar**: name + online pill + stat chips (Map / Port / Players / Mode / Uptime) +
+  Start / Stop / Restart / Update / Folder buttons + settings search + a "Store (N)" **staged-changes**
+  badge (edits queued, applied on restart). Consider staging config edits similarly.
+- **Config split into ~16 category tabs** — the schema-driven Config page needs a `group` field to
+  organize ARK's hundreds of settings into: Server Settings, Rules, Player Settings, Dino Settings,
+  Environment, Chat & Notifications, HUD & Visuals, Structures, Backup & Restore, ASA-API, RCON,
+  Cluster Settings, Access Control, Overrides, Mod Manager, Maintenance.
+- **Control patterns worth adopting (own styling):**
+  - Multiplier **sliders with quick-preset buttons** (1x / 5x / 10x / 100x) + a numeric box + range
+    label — for the many rate multipliers (Environment / Dino / Player).
+  - Boolean rules as a **grid of toggle cards** (highlighted when on).
+  - Per-setting and per-section **reset-to-default** (history icon).
+  - Global **"search settings"** across all groups.
+- **Mod Manager** = dedicated tab that edits the `-mods` id list.
+- **RCON** tab: connection status, scheduled commands, admin password auto-read from
+  `GameUserSettings.ini`, RCON port — pairs with our `rcon.rs` client.
+- **Access Control**: whitelist / admin management by Player ID (ARK GUID), "get from RCON
+  `listplayers`" — backs the `-exclusivejoin` whitelist; ties to our RCON client + player list.
+- **Maintenance**: open `Game.ini`/`GameUserSettings.ini`/folder, open firewall ports, install certs,
+  clean logs, force-clean steamapps, update-available check (build id), auto-restart-on-crash +
+  immediate-updates toggles. We already have connectivity/UPnP, update checks, and a crash watchdog —
+  good overlap to reuse.
+
 ## Still needed for the adapter build
 
 - ✅ `GameUserSettings.ini` + `Game.ini` samples received at `C:\Users\Rhyse\Documents\ark-samples\`
