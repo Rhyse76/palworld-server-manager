@@ -80,6 +80,21 @@ default, group, help}` — with the adapter owning parse↔write. Existing `conf
 Palworld adapter's config implementation; the generic `ConfigField` model already exists and is
 a good starting shape.
 
+**The config abstraction must NOT assume a single file.** A game's settings can span multiple
+sources, and the adapter maps each schema field to the right one:
+
+- **Palworld** — one file, the `OptionSettings=(...)` blob.
+- **ARK: SA** — three sources: `GameUserSettings.ini` (main), `Game.ini` (advanced multipliers),
+  and **launch/startup args** (some options exist ONLY as command-line flags). The ARK adapter
+  reads/writes all three and, at start time, composes the launch-arg subset into the server
+  command line (via `server::start`, which the adapter also parameterizes).
+- **Enshrouded** — one JSON file.
+
+So `GameSpec.config_rel` is just the *primary* file (used for detection/"open config folder");
+the real parse↔write is a per-adapter method that returns/consumes the unified `ConfigField`
+list regardless of how many underlying files/args it touches. The user always sees ONE grouped
+settings list, never the file split.
+
 ### Live control capability matrix
 
 | Game | Protocol | Players/kick/ban | Announce | Notes |
