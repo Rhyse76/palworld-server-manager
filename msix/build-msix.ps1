@@ -63,8 +63,10 @@ $manifest = $manifest.Replace("__PACKAGE_IDENTITY_NAME__", $PackageName)
 $manifest = $manifest.Replace("__PUBLISHER_ID__", $PublisherId)
 $manifest = $manifest.Replace("__PUBLISHER_DISPLAY_NAME__", $PublisherDisplayName)
 $manifest = $manifest.Replace("__APP_DISPLAY_NAME__", $AppDisplayName)
-# Case-sensitive (-creplace) so we only touch Identity's Version=, not the xml declaration's version=.
-$manifest = $manifest -creplace 'Version="[0-9.]+"', "Version=`"$Version`""
+# Case-sensitive (-creplace) so we don't touch the xml declaration's lowercase version=.
+# The negative lookbehind (?<![A-Za-z]) ensures we only match a standalone Version="..."
+# (Identity's), NOT MinVersion="..."/MaxVersionTested="..." where a letter precedes "Version".
+$manifest = $manifest -creplace '(?<![A-Za-z])Version="[0-9.]+"', "Version=`"$Version`""
 # Write UTF-8 WITHOUT BOM (a BOM before <?xml ?> breaks makeappx manifest validation).
 [System.IO.File]::WriteAllText((Join-Path $staging "AppxManifest.xml"), $manifest, (New-Object System.Text.UTF8Encoding($false)))
 
