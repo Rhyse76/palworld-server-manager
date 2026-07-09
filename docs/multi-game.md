@@ -124,6 +124,13 @@ The UI hides unsupported controls based on `spec.live_control` + finer per-featu
 6. **Add ARK adapter** (~3–5 days), then **Enshrouded** (~2–3 days).
 7. **Rebrand** — repo, updater endpoint, installer name (keep bundle identifier stable!), site,
    Store listing, in-app name → RhyseGaming Server Manager.
+   - **Microsoft Store (decided 2026-07):** first submission goes out NOW as
+     **"Server Manager for Palworld (Unofficial)"** (individual account, publisher display name
+     "Rhyse"). At the rebrand, **rename the DISPLAY name on the SAME Partner Center product** to
+     "RhyseGaming Server Manager" and upload the new package — do NOT create a new product. The
+     Package Identity Name is permanent (and invisible to users), so keeping the same product means
+     existing Store users get an upgrade, not a duplicate, and reviews/ratings carry over. This is
+     the Store equivalent of "keep the bundle identifier stable".
 
 ## Frontend implications
 
