@@ -89,11 +89,13 @@ if ($Test) {
   & $signtool sign /fd SHA256 /a /f $pfxPath /p "test" $msix
   if ($LASTEXITCODE -ne 0) { throw "signtool failed." }
   Write-Host ""
-  Write-Host "Signed for local testing. To install & test:" -ForegroundColor Green
-  Write-Host "  1. Trust the test cert (run as Admin, once):" -ForegroundColor Yellow
-  Write-Host "     Import-Certificate -FilePath '$pfxPath' -CertStoreLocation Cert:\LocalMachine\TrustedPeople" -ForegroundColor Gray
-  Write-Host "     (or right-click the .msix -> Install after trusting)" -ForegroundColor Gray
-  Write-Host "  2. Double-click $msix to install, then launch from Start menu." -ForegroundColor Yellow
+  Write-Host "Signed for local testing. To install & test (run as Admin, once):" -ForegroundColor Green
+  Write-Host "  1. Trust the self-signed test cert (password is 'test'):" -ForegroundColor Yellow
+  Write-Host "     `$pw = ConvertTo-SecureString -String 'test' -Force -AsPlainText" -ForegroundColor Gray
+  Write-Host "     Import-PfxCertificate -FilePath '$pfxPath' -CertStoreLocation Cert:\LocalMachine\TrustedPeople -Password `$pw" -ForegroundColor Gray
+  Write-Host "     Import-PfxCertificate -FilePath '$pfxPath' -CertStoreLocation Cert:\LocalMachine\Root -Password `$pw" -ForegroundColor Gray
+  Write-Host "     (Root import clears the 0x800B0109 'root not trusted' error for a self-signed cert.)" -ForegroundColor Gray
+  Write-Host "  2. Install:  Add-AppxPackage '$msix'   (then launch from the Start menu)." -ForegroundColor Yellow
   Write-Host "  Verify: install server, start/stop, backups all work inside the MSIX." -ForegroundColor Yellow
 } else {
   Write-Host ""
