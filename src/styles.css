@@ -270,6 +270,16 @@ button.btn:disabled {
   background: linear-gradient(90deg, var(--accent-dim), var(--accent));
   transition: width 0.2s;
 }
+/* Animated "working" bar for phases with no numeric progress yet (SteamCMD bootstrap). */
+.progress.indeterminate > span {
+  width: 40%;
+  transition: none;
+  animation: indeterminate 1.2s ease-in-out infinite;
+}
+@keyframes indeterminate {
+  0% { margin-left: -40%; }
+  100% { margin-left: 100%; }
+}
 
 /* ---- Log console ---- */
 .console {

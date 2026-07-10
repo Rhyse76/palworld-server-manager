@@ -16,10 +16,25 @@ interface Props {
   notify: (msg: string, error?: boolean) => void;
 }
 
+/// Map an install-log line to a friendly current-phase label, so the UI clearly
+/// shows work is happening even before SteamCMD reports a numeric percentage.
+function derivePhase(line: string): string | null {
+  const l = line.toLowerCase();
+  if (l.includes("downloading steamcmd")) return "Downloading SteamCMD…";
+  if (l.includes("extracting")) return "Extracting SteamCMD…";
+  if (l.includes("updated itself") || l.includes("running the install again"))
+    return "Preparing SteamCMD…";
+  if (l.includes("downloading, progress")) return "Downloading server files…";
+  if (l.includes("verifying")) return "Verifying server files…";
+  if (l.includes("fully installed") || l.includes("steamcmd finished")) return "Finishing up…";
+  return null;
+}
+
 export default function ServerPage({ status, config, refresh, notify }: Props) {
   const [log, setLog] = useState<string[]>([]);
   const [progress, setProgress] = useState<number | null>(null);
   const [installing, setInstalling] = useState(false);
+  const [phase, setPhase] = useState("");
   const [busy, setBusy] = useState(false);
   const [detected, setDetected] = useState<DetectedInstall[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -61,7 +76,11 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
 
   useEffect(() => {
     const unlisteners = [
-      onInstallLog((line) => setLog((l) => [...l.slice(-400), line])),
+      onInstallLog((line) => {
+        setLog((l) => [...l.slice(-400), line]);
+        const p = derivePhase(line);
+        if (p) setPhase(p);
+      }),
       onInstallProgress((pct) => setProgress(pct)),
     ];
     return () => {
@@ -76,6 +95,7 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
   async function install() {
     setInstalling(true);
     setProgress(0);
+    setPhase("Preparing…");
     setLog((l) => [...l, "> Starting install/update..."]);
     try {
       await api.installServer();
@@ -192,19 +212,39 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
           Downloads SteamCMD (first time only) and installs or updates the Palworld
           Dedicated Server (Steam app 2394010). The full server is several GB.
         </p>
-        <div className="row" style={{ marginBottom: progress !== null ? 14 : 0 }}>
+        <div className="row">
           <button className="btn primary" onClick={install} disabled={installing}>
             {installing ? "Working…" : installed ? "Update server" : "Install server"}
           </button>
-          {installing && progress !== null && (
-            <span style={{ color: "var(--text-dim)" }}>{progress.toFixed(1)}%</span>
-          )}
         </div>
-        {progress !== null && (
-          <div className="progress">
-            <span style={{ width: `${progress}%` }} />
-          </div>
-        )}
+        {installing &&
+          (() => {
+            const pct = progress ?? 0;
+            const determinate = pct > 0;
+            return (
+              <div style={{ marginTop: 14 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    color: "var(--text-dim)",
+                    fontSize: 13,
+                    marginBottom: 6,
+                  }}
+                >
+                  <span>{phase || "Preparing…"}</span>
+                  {determinate && <span>{pct.toFixed(1)}%</span>}
+                </div>
+                <div className={`progress${determinate ? "" : " indeterminate"}`}>
+                  <span style={determinate ? { width: `${pct}%` } : undefined} />
+                </div>
+                <p style={{ color: "var(--text-dim)", fontSize: 12, margin: "8px 0 0" }}>
+                  The server is several GB — this can take a few minutes. Live progress shows in the
+                  console below.
+                </p>
+              </div>
+            );
+          })()}
       </div>
 
       <div className="card">

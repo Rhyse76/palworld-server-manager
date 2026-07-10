@@ -131,7 +131,7 @@ export default function App() {
           )}
           {status?.running ? "● Server online" : "○ Server offline"}
           <br />
-          v0.4.3
+          v0.4.4
         </div>
       </aside>
 
