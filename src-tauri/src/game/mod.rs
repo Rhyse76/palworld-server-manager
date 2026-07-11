@@ -12,10 +12,11 @@ use std::path::Path;
 
 use crate::config::ConfigField;
 
+mod ark;
 mod palworld;
 
 /// How a game exposes live control (players, kick/ban, announce) while running.
-// `Rcon`/`None` aren't constructed until the ARK/Enshrouded adapters land.
+// `None` isn't constructed until the Enshrouded adapter lands.
 #[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LiveControl {
@@ -79,11 +80,20 @@ pub trait Game: Send + Sync {
     fn import_config(&self, path: &Path) -> Result<Vec<ConfigField>, String>;
 }
 
+/// Resolve a game adapter by its id, or `None` if unknown.
+pub fn by_id(id: &str) -> Option<&'static dyn Game> {
+    match id {
+        "palworld" => Some(&palworld::Palworld),
+        "ark-sa" => Some(&ark::ArkSurvivalAscended),
+        _ => None,
+    }
+}
+
 /// The currently active game.
 ///
-/// Single-game for now (Palworld). The multi-game refactor will resolve this from
-/// the active server profile (each profile pins a game); keeping it behind one
-/// function means callers don't change when that happens.
+/// Still resolves to Palworld for now; the per-profile-game-selection step will
+/// pass the active profile's game id here. Keeping it behind one function means
+/// callers don't change when that happens.
 pub fn active() -> &'static dyn Game {
-    &palworld::Palworld
+    by_id("palworld").expect("palworld adapter is always registered")
 }
