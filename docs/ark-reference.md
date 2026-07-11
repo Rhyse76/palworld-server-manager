@@ -141,14 +141,14 @@ Takeaways (from a sampled subset — full set reviewed per-group at build time):
   verified values above, and a section-aware INI parser/in-place writer for both files handling the
   duplicate-key arrays, quotes/empties/bools, and comment/format preservation. Registered via
   `game::by_id("ark-sa")`; unit-tested. Fields use composite keys `<file>|<section>|<key>#<occ>`.
-- ⏭️ **Next for ARK (in order):**
-  1. **`launch_args`** — assemble `<Map>?listen -Port=… -QueryPort=… -RCONPort=… -mods=… -flags`
-     from the config values (see the launch-line breakdown above); thread into `server::start`.
-  2. **Per-profile game selection** — each profile pins a game; `active()` reads it; add-server / first-run
-     wizard asks which game; sidebar game switcher. (Makes ARK actually selectable.)
-  3. **Live control behind a trait** — wrap `rest.rs` (Palworld) and `rcon.rs` (ARK) in a
-     `LiveControlClient` trait; ARK's players/kick/ban/announce go over RCON.
-  4. **Config UI polish** — schema/labels/groups + filter out the graphics section
-     (`[/Script/ShooterGame.ShooterGameUserSettings]`) so ARK's Config page is usable.
-  5. **~11 GB dedicated-server download** (app 2430930) for the final live shakedown: SteamCMD install +
-     start/stop detection + an RCON round-trip against a running server.
+- ✅ **`launch_args`** — assembles `<Map>?listen -Port=… -QueryPort=… -RCONPort=… [-mods=…]
+  [-exclusivejoin] -log` from `GameUserSettings [ServerSettings]`; `server::start` appends it.
+- ✅ **Per-profile game selection** — ARK is selectable; switching profile switches the whole app.
+- ✅ **Config UI** — grouped/labeled fields; graphics section filtered out.
+- ⏭️ **Remaining for ARK:**
+  1. **Live control behind a trait** — wrap `rest.rs` (Palworld) and `rcon.rs` (ARK) in a
+     `LiveControlClient` trait; ARK's players/kick/ban/announce go over RCON commands
+     (`ListPlayers`, `KickPlayer`, `BanPlayer`, `Broadcast`, `SaveWorld`, `DoExit`). Also an
+     "enable RCON" helper (set `RCONEnabled=True` + `ServerAdminPassword` in the ini).
+  2. **~11 GB dedicated-server download** (app 2430930) for the final live shakedown: SteamCMD install +
+     `ArkAscendedServer.exe` start/stop detection + an RCON round-trip against a running server.
