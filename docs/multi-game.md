@@ -119,9 +119,14 @@ The UI hides unsupported controls based on `spec.live_control` + finer per-featu
 4. **Live control behind a trait** — `rest.rs` becomes Palworld's live client; wrap them in a
    trait. (`rcon.rs` client ✅ built + unit-tested; the *trait abstraction* is designed alongside
    the ARK adapter so it's shaped against a real second case.)
-5. **Per-profile game selection** — each server profile pins a game; `active()` reads it; first-run
-   wizard asks which game; sidebar game switcher; game-aware UI copy/labels.
-6. **Add ARK adapter** (~3–5 days), then **Enshrouded** (~2–3 days).
+5. ✅ **Per-profile game selection** — each profile pins a `game`; a global `game::set_active`
+   (synced from the active profile on startup + add/switch/delete) drives `active()`; game picker
+   in the Add-profile flow; per-profile + sidebar game badges; `games_list` command. Switching
+   profile now switches the whole app to that game. *Remaining polish:* game picker in the
+   first-run wizard, and game-aware copy on the remaining pages.
+6. **Add ARK adapter** — ✅ `GameSpec` + config parser done. Remaining: `launch_args`, live control
+   behind a trait (RCON), config-UI schema/labels, then the download + live shakedown. Then
+   **Enshrouded** (~2–3 days).
 7. **Rebrand** — repo, updater endpoint, installer name (keep bundle identifier stable!), site,
    Store listing, in-app name → RhyseGaming Server Manager.
    - **Microsoft Store (decided 2026-07):** first submission goes out NOW as
