@@ -75,6 +75,10 @@ export interface ConfigField {
   key: string;
   value: string;
   kind: FieldKind;
+  /** Friendly display name; UI falls back to `key` when empty. */
+  label?: string;
+  /** Group/section heading; empty renders ungrouped. */
+  group?: string;
 }
 
 export interface DetectedInstall {

@@ -16,12 +16,18 @@ use crate::game;
 /// A single setting. `kind` is one of `bool`, `int`, `float`, `string`, `enum` and
 /// drives the UI control; `value` is the logical value (inner text for strings,
 /// `"true"`/`"false"` for bools, the number for numbers, the raw token for enums).
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigField {
     pub key: String,
     pub value: String,
     pub kind: String,
+    /// Friendly display name; the UI falls back to `key` when empty.
+    #[serde(default)]
+    pub label: String,
+    /// Group/section heading for the UI; empty renders ungrouped.
+    #[serde(default)]
+    pub group: String,
 }
 
 /// Find a field's logical value by key.
@@ -39,6 +45,7 @@ pub fn upsert(fields: &mut Vec<ConfigField>, key: &str, value: &str, kind: &str)
             key: key.to_string(),
             value: value.to_string(),
             kind: kind.to_string(),
+            ..Default::default()
         });
     }
 }

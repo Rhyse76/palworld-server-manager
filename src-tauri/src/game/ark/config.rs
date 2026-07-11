@@ -34,10 +34,46 @@ fn game_path(install_dir: &Path) -> PathBuf {
 
 struct Entry {
     composite: String,
+    section: String,
     key: String,
     value: String,
     kind: String,
     line: usize,
+}
+
+/// Client/graphics sections that aren't server config — hidden from the UI.
+const HIDDEN_SECTIONS: &[&str] = &[
+    "[ScalabilityGroups]",
+    "[/Script/ShooterGame.ShooterGameUserSettings]",
+    "[/Script/Engine.GameUserSettings]",
+    "[Startup]",
+];
+
+fn is_hidden(section: &str) -> bool {
+    HIDDEN_SECTIONS.contains(&section)
+}
+
+/// A readable group heading from a raw INI section header.
+fn friendly_section(section: &str) -> String {
+    let s = section.trim_start_matches('[').trim_end_matches(']');
+    match s {
+        "ServerSettings" => "Server settings".into(),
+        "SessionSettings" | "/Script/Engine.GameSession" => "Session".into(),
+        "ModSettings" => "Mods".into(),
+        "MessageOfTheDay" => "Message of the day".into(),
+        "/Script/ShooterGame.ShooterGameMode" => "Gameplay (Game.ini)".into(),
+        other => other.rsplit(['.', '/']).next().unwrap_or(other).to_string(),
+    }
+}
+
+fn to_field(e: Entry) -> ConfigField {
+    ConfigField {
+        label: e.key,
+        group: friendly_section(&e.section),
+        key: e.composite,
+        value: e.value,
+        kind: e.kind,
+    }
 }
 
 /// Parse a file's text into its lines plus the editable settings, tagging each
@@ -63,7 +99,14 @@ fn parse(file_id: &str, text: &str) -> (Vec<String>, Vec<Entry>) {
             let n = occ.entry((section.clone(), key.clone())).or_insert(0);
             let composite = format!("{file_id}|{section}|{key}#{n}");
             *n += 1;
-            entries.push(Entry { composite, key, value, kind, line: i });
+            entries.push(Entry {
+                composite,
+                section: section.clone(),
+                key,
+                value,
+                kind,
+                line: i,
+            });
         }
     }
     (lines, entries)
@@ -113,21 +156,14 @@ fn serialize(value: &str, kind: &str) -> String {
     }
 }
 
-fn entries_to_fields(entries: Vec<Entry>) -> Vec<ConfigField> {
-    entries
-        .into_iter()
-        .map(|e| ConfigField {
-            key: e.composite,
-            value: e.value,
-            kind: e.kind,
-        })
-        .collect()
-}
-
 fn read_file(file_id: &str, path: &Path) -> Vec<ConfigField> {
     let text = fs::read_to_string(path).unwrap_or_default();
     let (_lines, entries) = parse(file_id, &text);
-    entries_to_fields(entries)
+    entries
+        .into_iter()
+        .filter(|e| !is_hidden(&e.section))
+        .map(to_field)
+        .collect()
 }
 
 /// Apply changed values to a file's text in place, preserving everything else.
@@ -186,7 +222,11 @@ pub fn import(path: &Path) -> Result<Vec<ConfigField>, String> {
     if entries.is_empty() {
         return Err("No settings were found in that file.".into());
     }
-    Ok(entries_to_fields(entries))
+    Ok(entries
+        .into_iter()
+        .filter(|e| !is_hidden(&e.section))
+        .map(to_field)
+        .collect())
 }
 
 #[cfg(test)]

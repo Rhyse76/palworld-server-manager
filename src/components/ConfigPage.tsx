@@ -87,8 +87,22 @@ export default function ConfigPage({ notify }: Props) {
 
   const shown = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    return q ? fields.filter((f) => f.key.toLowerCase().includes(q)) : fields;
+    if (!q) return fields;
+    return fields.filter(
+      (f) => f.key.toLowerCase().includes(q) || (f.label ?? "").toLowerCase().includes(q),
+    );
   }, [fields, filter]);
+
+  // Group the visible fields by `group`, preserving first-seen order.
+  const groupOrder = useMemo(() => {
+    const map = new Map<string, ConfigField[]>();
+    for (const f of shown) {
+      const g = f.group ?? "";
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(f);
+    }
+    return Array.from(map.entries());
+  }, [shown]);
 
   if (loaded && error) {
     return (
@@ -149,11 +163,28 @@ export default function ConfigPage({ notify }: Props) {
         </button>
       </div>
 
-      <div className="fields">
-        {shown.map((f) => (
-          <Field key={f.key} field={f} onChange={(v) => update(f.key, v)} />
-        ))}
-      </div>
+      {groupOrder.map(([group, fs]) => (
+        <div key={group || "_ungrouped"}>
+          {group && (
+            <h3
+              style={{
+                margin: "20px 0 8px",
+                fontSize: 14,
+                color: "var(--accent)",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              {group}
+            </h3>
+          )}
+          <div className="fields">
+            {fs.map((f) => (
+              <Field key={f.key} field={f} onChange={(v) => update(f.key, v)} />
+            ))}
+          </div>
+        </div>
+      ))}
       {loaded && shown.length === 0 && <div className="empty">No settings match “{filter}”.</div>}
     </>
   );
@@ -163,7 +194,7 @@ function Field({ field, onChange }: { field: ConfigField; onChange: (v: string) 
   return (
     <div className="field">
       <label title={field.key}>
-        {field.key}
+        {field.label || field.key}
         <span className="kind" style={{ marginLeft: 8 }}>
           {field.kind}
         </span>

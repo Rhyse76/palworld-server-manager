@@ -110,7 +110,7 @@ fn parse_fields(blob: &str) -> Vec<ConfigField> {
             let key = key.trim().to_string();
             let raw = raw.trim();
             let (value, kind) = classify(raw);
-            Some(ConfigField { key, value, kind })
+            Some(ConfigField { key, value, kind, ..Default::default() })
         })
         .collect()
 }
