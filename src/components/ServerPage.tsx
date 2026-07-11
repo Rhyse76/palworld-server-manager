@@ -69,7 +69,7 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
   }, []);
 
   async function use(path: string, source: string) {
-    await api.addProfile(source, path);
+    await api.addProfile(source, path, "palworld");
     notify("Connected — added as a server profile.");
     refresh();
   }

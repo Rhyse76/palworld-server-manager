@@ -21,6 +21,8 @@ export interface ServerProfile {
   id: string;
   name: string;
   installDir: string;
+  /** Game id this profile manages (e.g. "palworld", "ark-sa"). */
+  game: string;
 }
 
 export interface Automation {
@@ -158,7 +160,9 @@ export const api = {
   setBackupMirror: (dir: string) => invoke<void>("set_backup_mirror", { dir }),
 
   // Profiles
-  addProfile: (name: string, path: string) => invoke<string>("add_profile", { name, path }),
+  addProfile: (name: string, path: string, game: string) =>
+    invoke<string>("add_profile", { name, path, game }),
+  gamesList: () => invoke<GameInfo[]>("games_list"),
   setActiveProfile: (id: string) => invoke<void>("set_active_profile", { id }),
   renameProfile: (id: string, name: string) => invoke<void>("rename_profile", { id, name }),
   deleteProfile: (id: string) => invoke<void>("delete_profile", { id }),

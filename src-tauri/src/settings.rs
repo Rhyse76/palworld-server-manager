@@ -17,6 +17,14 @@ pub struct ServerProfile {
     pub id: String,
     pub name: String,
     pub install_dir: String,
+    /// Which game this profile manages (`game::by_id`). Defaults to `palworld`
+    /// so existing configs (written before multi-game) load unchanged.
+    #[serde(default = "default_game")]
+    pub game: String,
+}
+
+fn default_game() -> String {
+    "palworld".into()
 }
 
 /// Auto-restart and scheduled-backup settings, applied to the active profile.
@@ -144,6 +152,7 @@ pub fn load(app: &AppHandle) -> AppConfig {
             id: new_id(),
             name: "Default".into(),
             install_dir: dir,
+            game: default_game(),
         });
         changed = true;
     }
@@ -169,6 +178,11 @@ pub fn active_profile(app: &AppHandle) -> Option<ServerProfile> {
     let cfg = load(app);
     let id = cfg.active_profile.clone()?;
     cfg.profiles.into_iter().find(|p| p.id == id)
+}
+
+/// The active profile's game id (default `palworld`).
+pub fn active_game_id(app: &AppHandle) -> String {
+    active_profile(app).map(|p| p.game).unwrap_or_else(default_game)
 }
 
 /// The install dir of the active profile.
@@ -201,7 +215,7 @@ pub fn set_active(app: &AppHandle, id: &str) -> Result<(), String> {
 
 /// Add a profile. If a profile already points at the same dir, activate it
 /// instead of duplicating. Returns the active profile id.
-pub fn add_profile(app: &AppHandle, name: &str, install_dir: &str) -> Result<String, String> {
+pub fn add_profile(app: &AppHandle, name: &str, install_dir: &str, game: &str) -> Result<String, String> {
     let mut cfg = load(app);
     if let Some(existing) = cfg
         .profiles
@@ -213,11 +227,13 @@ pub fn add_profile(app: &AppHandle, name: &str, install_dir: &str) -> Result<Str
         save(app, &cfg)?;
         return Ok(id);
     }
+    let game = if game.trim().is_empty() { default_game() } else { game.trim().to_string() };
     let id = new_id();
     cfg.profiles.push(ServerProfile {
         id: id.clone(),
         name: if name.trim().is_empty() { "Server".into() } else { name.trim().to_string() },
         install_dir: install_dir.to_string(),
+        game,
     });
     cfg.active_profile = Some(id.clone());
     save(app, &cfg)?;

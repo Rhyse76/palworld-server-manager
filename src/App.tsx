@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { check } from "@tauri-apps/plugin-updater";
 import logo from "./assets/logo.png";
-import { api, type AppConfig, type StatusInfo } from "./api";
+import { api, type AppConfig, type GameInfo, type StatusInfo } from "./api";
 import ServerPage from "./components/ServerPage";
 import ConfigPage from "./components/ConfigPage";
 import DashboardPage from "./components/DashboardPage";
@@ -50,6 +50,11 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const [wizardOpen, setWizardOpen] = useState(true);
+  const [games, setGames] = useState<GameInfo[]>([]);
+
+  useEffect(() => {
+    api.gamesList().then(setGames).catch(() => {});
+  }, []);
 
   // Load status and config independently so a transient failure in one doesn't
   // discard the other (previously a single Promise.all could drop a good status).
@@ -102,14 +107,17 @@ export default function App() {
       .catch(() => {});
   }, [notify]);
 
-  const activeName = config?.profiles.find((p) => p.id === config.activeProfile)?.name;
+  const activeProfileObj = config?.profiles.find((p) => p.id === config.activeProfile);
+  const activeName = activeProfileObj?.name;
+  const activeGameName =
+    games.find((g) => g.id === activeProfileObj?.game)?.displayName ?? "Palworld";
 
   return (
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
           <img className="brand-logo" src={logo} alt="Rhyse Gaming" />
-          <div className="brand-sub">Palworld Server Manager</div>
+          <div className="brand-sub">{activeGameName}</div>
         </div>
         <nav className="nav">
           {NAV.map((n) => (

@@ -58,9 +58,7 @@ struct GameInfo {
     live_control: String,
 }
 
-#[tauri::command]
-fn game_info() -> GameInfo {
-    let s = game::active().spec();
+fn spec_to_info(s: &game::GameSpec) -> GameInfo {
     let config_file = std::path::Path::new(s.config_rel)
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
@@ -77,6 +75,18 @@ fn game_info() -> GameInfo {
         }
         .to_string(),
     }
+}
+
+/// Metadata about the active game.
+#[tauri::command]
+fn game_info() -> GameInfo {
+    spec_to_info(game::active().spec())
+}
+
+/// All supported games, for the add-server game picker.
+#[tauri::command]
+fn games_list() -> Vec<GameInfo> {
+    game::all().into_iter().map(spec_to_info).collect()
 }
 
 /// Point the active profile at a different install folder.
@@ -291,13 +301,17 @@ fn set_backup_mirror(app: AppHandle, dir: String) -> Result<(), String> {
 // ---- Profiles ----
 
 #[tauri::command]
-fn add_profile(app: AppHandle, name: String, path: String) -> Result<String, String> {
-    settings::add_profile(&app, &name, &path)
+fn add_profile(app: AppHandle, name: String, path: String, game: String) -> Result<String, String> {
+    let id = settings::add_profile(&app, &name, &path, &game)?;
+    game::set_active(&settings::active_game_id(&app));
+    Ok(id)
 }
 
 #[tauri::command]
 fn set_active_profile(app: AppHandle, id: String) -> Result<(), String> {
-    settings::set_active(&app, &id)
+    settings::set_active(&app, &id)?;
+    game::set_active(&settings::active_game_id(&app));
+    Ok(())
 }
 
 #[tauri::command]
@@ -307,7 +321,9 @@ fn rename_profile(app: AppHandle, id: String, name: String) -> Result<(), String
 
 #[tauri::command]
 fn delete_profile(app: AppHandle, id: String) -> Result<(), String> {
-    settings::delete_profile(&app, &id)
+    settings::delete_profile(&app, &id)?;
+    game::set_active(&settings::active_game_id(&app));
+    Ok(())
 }
 
 // ---- Automation ----
@@ -415,6 +431,8 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(automation::SchedulerState::default())
         .setup(|app| {
+            // Point the engine at the active profile's game before anything runs.
+            game::set_active(&settings::active_game_id(app.handle()));
             automation::start(app.handle().clone());
             discord::start_player_watch(app.handle().clone());
             Ok(())
@@ -423,6 +441,7 @@ pub fn run() {
             get_status,
             get_app_config,
             game_info,
+            games_list,
             set_install_dir,
             install_server,
             start_server,

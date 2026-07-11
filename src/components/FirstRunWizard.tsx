@@ -35,7 +35,7 @@ export default function FirstRunWizard({ status, refresh, notify, onClose }: Pro
       if (found.length === 0) {
         notify("No existing server found on this PC.", true);
       } else {
-        await api.addProfile(found[0].source, found[0].path);
+        await api.addProfile(found[0].source, found[0].path, "palworld");
         notify("Connected to your existing server.");
         refresh();
       }

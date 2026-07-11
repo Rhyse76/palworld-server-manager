@@ -9,11 +9,15 @@
 //! See `docs/multi-game.md` for the full design and migration plan.
 
 use std::path::Path;
+use std::sync::RwLock;
 
 use crate::config::ConfigField;
 
 mod ark;
 mod palworld;
+
+/// Ids of all supported games, in display order (for the game picker).
+const IDS: &[&str] = &["palworld", "ark-sa"];
 
 /// How a game exposes live control (players, kick/ban, announce) while running.
 // `None` isn't constructed until the Enshrouded adapter lands.
@@ -89,11 +93,25 @@ pub fn by_id(id: &str) -> Option<&'static dyn Game> {
     }
 }
 
-/// The currently active game.
-///
-/// Still resolves to Palworld for now; the per-profile-game-selection step will
-/// pass the active profile's game id here. Keeping it behind one function means
-/// callers don't change when that happens.
+/// Every supported game's spec, in display order — for the game picker.
+pub fn all() -> Vec<&'static GameSpec> {
+    IDS.iter().filter_map(|id| by_id(id).map(|g| g.spec())).collect()
+}
+
+/// The active game's id. Global because `active()` is called from deep in the
+/// engine (no `AppHandle` in scope); the app keeps it in sync with the active
+/// profile via `set_active` on startup and whenever the active profile changes.
+static ACTIVE_GAME: RwLock<String> = RwLock::new(String::new());
+
+/// Point the engine at a game by id (falls back to Palworld if unknown/unset).
+pub fn set_active(id: &str) {
+    if let Ok(mut g) = ACTIVE_GAME.write() {
+        *g = id.to_string();
+    }
+}
+
+/// The currently active game (the active profile's game).
 pub fn active() -> &'static dyn Game {
-    by_id("palworld").expect("palworld adapter is always registered")
+    let id = ACTIVE_GAME.read().ok().map(|g| g.clone()).unwrap_or_default();
+    by_id(&id).unwrap_or_else(|| by_id("palworld").expect("palworld adapter is always registered"))
 }

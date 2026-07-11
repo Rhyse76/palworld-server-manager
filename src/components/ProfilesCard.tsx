@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
-import { api, type AppConfig } from "../api";
+import { api, type AppConfig, type GameInfo } from "../api";
 
 interface Props {
   config: AppConfig | null;
@@ -11,16 +11,24 @@ interface Props {
 export default function ProfilesCard({ config, refresh, notify }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [nameEdit, setNameEdit] = useState("");
+  const [games, setGames] = useState<GameInfo[]>([]);
+  const [newGame, setNewGame] = useState("palworld");
+
+  useEffect(() => {
+    api.gamesList().then(setGames).catch(() => {});
+  }, []);
+
+  const gameName = (id: string) => games.find((g) => g.id === id)?.displayName ?? id;
 
   if (!config) return null;
   const active = config.activeProfile;
 
   async function add() {
-    const picked = await open({ directory: true, title: "Choose a server folder" });
+    const picked = await open({ directory: true, title: `Choose a folder for the ${gameName(newGame)} server` });
     if (typeof picked !== "string") return;
     const name = picked.split(/[\\/]/).filter(Boolean).pop() || "Server";
-    await api.addProfile(name, picked);
-    notify("Profile added and activated.");
+    await api.addProfile(name, picked, newGame);
+    notify(`${gameName(newGame)} profile added and activated.`);
     refresh();
   }
 
@@ -54,9 +62,26 @@ export default function ProfilesCard({ config, refresh, notify }: Props) {
     <div className="card">
       <div className="row spread" style={{ marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>Server profiles</h2>
-        <button className="btn" onClick={add}>
-          Add profile…
-        </button>
+        <div className="row" style={{ gap: 8 }}>
+          {games.length > 1 && (
+            <select
+              className="search"
+              style={{ maxWidth: 190 }}
+              value={newGame}
+              onChange={(e) => setNewGame(e.target.value)}
+              title="Game for the new profile"
+            >
+              {games.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.displayName}
+                </option>
+              ))}
+            </select>
+          )}
+          <button className="btn" onClick={add}>
+            Add profile…
+          </button>
+        </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {config.profiles.map((p) => (
@@ -80,6 +105,12 @@ export default function ProfilesCard({ config, refresh, notify }: Props) {
                 ) : (
                   <span style={{ fontWeight: 600 }}>
                     {p.name}
+                    <span
+                      className="pill"
+                      style={{ marginLeft: 8, padding: "2px 8px", fontWeight: 400 }}
+                    >
+                      {gameName(p.game)}
+                    </span>
                     {p.id === active && (
                       <span className="pill ok" style={{ marginLeft: 8, padding: "2px 8px" }}>
                         active
