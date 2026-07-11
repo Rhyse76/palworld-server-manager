@@ -215,6 +215,44 @@ pub fn write(install_dir: &Path, fields: &[ConfigField]) -> Result<(), String> {
     Ok(())
 }
 
+/// Look up a `[ServerSettings]` value from `GameUserSettings.ini`.
+fn server_setting(install_dir: &Path, key: &str) -> Option<String> {
+    let text = fs::read_to_string(gus_path(install_dir)).ok()?;
+    let (_lines, entries) = parse("gus", &text);
+    entries
+        .into_iter()
+        .find(|e| e.section == "[ServerSettings]" && e.key == key)
+        .map(|e| e.value)
+}
+
+/// Assemble the ARK server launch command line from config values, with sane
+/// defaults for anything unset. Shape: `<Map>?listen -Port=… -QueryPort=…
+/// -RCONPort=… [-mods=…] [-exclusivejoin] -log`.
+pub fn launch_args(install_dir: &Path) -> Vec<String> {
+    build_launch_args(|k| server_setting(install_dir, k))
+}
+
+fn build_launch_args(get: impl Fn(&str) -> Option<String>) -> Vec<String> {
+    let val = |k: &str, default: &str| {
+        get(k).filter(|s| !s.trim().is_empty()).unwrap_or_else(|| default.to_string())
+    };
+    let map = val("MapSelection", "TheIsland_WP");
+    let mut args = vec![
+        format!("{map}?listen"),
+        format!("-Port={}", val("Port", "7777")),
+        format!("-QueryPort={}", val("QueryPort", "27015")),
+        format!("-RCONPort={}", val("RCONPort", "27020")),
+    ];
+    if let Some(mods) = get("ActiveMods").filter(|s| !s.trim().is_empty()) {
+        args.push(format!("-mods={mods}"));
+    }
+    if get("ExclusiveJoin").as_deref() == Some("true") {
+        args.push("-exclusivejoin".into());
+    }
+    args.push("-log".into());
+    args
+}
+
 /// Parse a single ARK config file (e.g. an imported `GameUserSettings.ini`).
 pub fn import(path: &Path) -> Result<Vec<ConfigField>, String> {
     let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
@@ -283,6 +321,35 @@ ConfigOverrideItemMaxQuantity=(B)\n";
         assert!(dupes[1].composite.ends_with("#1"));
         assert_eq!(dupes[0].value, "(A)");
         assert_eq!(dupes[1].value, "(B)");
+    }
+
+    #[test]
+    fn builds_launch_command_from_config() {
+        let vals: HashMap<&str, &str> = [
+            ("MapSelection", "Ragnarok_WP"),
+            ("Port", "7777"),
+            ("QueryPort", "27025"),
+            ("RCONPort", "27020"),
+            ("ActiveMods", "940975,927090"),
+            ("ExclusiveJoin", "true"),
+        ]
+        .into_iter()
+        .collect();
+        let args = build_launch_args(|k| vals.get(k).map(|s| s.to_string()));
+        assert_eq!(args[0], "Ragnarok_WP?listen");
+        assert!(args.contains(&"-Port=7777".to_string()));
+        assert!(args.contains(&"-QueryPort=27025".to_string()));
+        assert!(args.contains(&"-RCONPort=27020".to_string()));
+        assert!(args.contains(&"-mods=940975,927090".to_string()));
+        assert!(args.contains(&"-exclusivejoin".to_string()));
+        assert!(args.contains(&"-log".to_string()));
+
+        // Defaults when nothing is configured; no mods/exclusivejoin.
+        let d = build_launch_args(|_| None);
+        assert_eq!(d[0], "TheIsland_WP?listen");
+        assert!(d.contains(&"-QueryPort=27015".to_string()));
+        assert!(!d.iter().any(|a| a.starts_with("-mods")));
+        assert!(!d.contains(&"-exclusivejoin".to_string()));
     }
 
     #[test]

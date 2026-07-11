@@ -44,6 +44,7 @@ impl Game for ArkSurvivalAscended {
         config::import(path)
     }
 
-    // launch_args: ARK needs `<Map>?listen -Port=… -RCONPort=… -mods=…` built from
-    // config. Implemented in the launch/live-control slice (see docs/ark-reference.md).
+    fn launch_args(&self, install_dir: &Path) -> Vec<String> {
+        config::launch_args(install_dir)
+    }
 }
