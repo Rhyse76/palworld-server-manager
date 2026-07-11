@@ -122,8 +122,9 @@ The UI hides unsupported controls based on `spec.live_control` + finer per-featu
 5. ✅ **Per-profile game selection** — each profile pins a `game`; a global `game::set_active`
    (synced from the active profile on startup + add/switch/delete) drives `active()`; game picker
    in the Add-profile flow; per-profile + sidebar game badges; `games_list` command. Switching
-   profile now switches the whole app to that game. *Remaining polish:* game picker in the
-   first-run wizard, and game-aware copy on the remaining pages.
+   profile now switches the whole app to that game. Game-aware copy done across Server/Connect/
+   Automation/Config/wizard. *Remaining polish:* a game picker in the first-run wizard (currently
+   Palworld-detect-oriented), and ARK detection in `detect.rs` (Palworld-only today).
 6. **Add ARK adapter** — ✅ `GameSpec` + config parser done. Remaining: `launch_args`, live control
    behind a trait (RCON), config-UI schema/labels, then the download + live shakedown. Then
    **Enshrouded** (~2–3 days).
