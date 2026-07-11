@@ -3,6 +3,7 @@ import { api, type NetworkInfo, type Reachability } from "../api";
 
 interface Props {
   notify: (msg: string, error?: boolean) => void;
+  gameName: string;
 }
 
 /** Mirrors the backend: addresses that reach this PC over a private/overlay
@@ -16,7 +17,7 @@ function isOverlayIp(ip: string): boolean {
   return ip.startsWith("fd");
 }
 
-export default function ConnectPage({ notify }: Props) {
+export default function ConnectPage({ notify, gameName }: Props) {
   const [info, setInfo] = useState<NetworkInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -98,7 +99,7 @@ export default function ConnectPage({ notify }: Props) {
           </button>
         </div>
         <p style={{ color: "var(--text-dim)", marginBottom: 0 }}>
-          In Palworld: <strong>Join Multiplayer Server → type the address above</strong>.
+          In {gameName}: <strong>Join Multiplayer Server → type the address above</strong>.
           {info?.configuredIp
             ? " This uses your server's configured PublicIP (e.g. Tailscale / VPN / domain)."
             : ""}

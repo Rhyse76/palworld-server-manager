@@ -145,14 +145,25 @@ export default function App() {
 
       <main className="content">
         {page === "server" && (
-          <ServerPage status={status} config={config} refresh={refresh} notify={notify} />
+          <ServerPage
+            status={status}
+            config={config}
+            refresh={refresh}
+            notify={notify}
+            gameName={activeGameName}
+          />
         )}
         {page === "dashboard" && <DashboardPage notify={notify} />}
-        {page === "connect" && <ConnectPage notify={notify} />}
+        {page === "connect" && <ConnectPage notify={notify} gameName={activeGameName} />}
         {page === "config" && <ConfigPage notify={notify} />}
         {page === "backups" && <BackupsPage config={config} notify={notify} />}
         {page === "automation" && (
-          <AutomationPage config={config} refresh={refresh} notify={notify} />
+          <AutomationPage
+            config={config}
+            refresh={refresh}
+            notify={notify}
+            gameName={activeGameName}
+          />
         )}
         {page === "mods" && <ModsPage notify={notify} />}
         {page === "saves" && <SavesPage notify={notify} />}
@@ -169,6 +180,7 @@ export default function App() {
           status={status}
           refresh={refresh}
           notify={notify}
+          gameName={activeGameName}
           onClose={() => setWizardOpen(false)}
         />
       )}

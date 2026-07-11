@@ -14,6 +14,7 @@ interface Props {
   config: AppConfig | null;
   refresh: () => void;
   notify: (msg: string, error?: boolean) => void;
+  gameName: string;
 }
 
 /// Map an install-log line to a friendly current-phase label, so the UI clearly
@@ -30,7 +31,7 @@ function derivePhase(line: string): string | null {
   return null;
 }
 
-export default function ServerPage({ status, config, refresh, notify }: Props) {
+export default function ServerPage({ status, config, refresh, notify, gameName }: Props) {
   const [log, setLog] = useState<string[]>([]);
   const [progress, setProgress] = useState<number | null>(null);
   const [installing, setInstalling] = useState(false);
@@ -141,7 +142,7 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
       <div className="page-head">
         <div>
           <h1>Server</h1>
-          <p>Install, update, and control your Palworld dedicated server.</p>
+          <p>Install, update, and control your {gameName} dedicated server.</p>
         </div>
         <div className="row">
           <span className={`pill ${installed ? "ok" : "off"}`}>
@@ -166,7 +167,7 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
           <p style={{ color: "var(--text-dim)", margin: 0 }}>
             {scanning
               ? "Searching Steam libraries and app folders…"
-              : "No existing Palworld server found. Use Install below, or pick a folder above."}
+              : `No existing ${gameName} server found. Use Install below, or pick a folder above.`}
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -209,8 +210,8 @@ export default function ServerPage({ status, config, refresh, notify }: Props) {
       <div className="card">
         <h2>Install / Update</h2>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
-          Downloads SteamCMD (first time only) and installs or updates the Palworld
-          Dedicated Server (Steam app 2394010). The full server is several GB.
+          Downloads SteamCMD (first time only) and installs or updates the {gameName}
+          {" "}dedicated server via Steam. The full server is several GB.
         </p>
         <div className="row">
           <button className="btn primary" onClick={install} disabled={installing}>

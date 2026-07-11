@@ -5,11 +5,12 @@ interface Props {
   status: StatusInfo | null;
   refresh: () => void;
   notify: (msg: string, error?: boolean) => void;
+  gameName: string;
   onClose: () => void;
 }
 
 /** Guided first-run setup, shown when no server is installed yet. */
-export default function FirstRunWizard({ status, refresh, notify, onClose }: Props) {
+export default function FirstRunWizard({ status, refresh, notify, gameName, onClose }: Props) {
   const [step, setStep] = useState(0);
   const [working, setWorking] = useState(false);
   const installed = status?.installed ?? false;
@@ -68,7 +69,7 @@ export default function FirstRunWizard({ status, refresh, notify, onClose }: Pro
       title: "Welcome 👋",
       body: (
         <p>
-          Let's get your Palworld dedicated server running in a few quick steps. You can skip
+          Let's get your {gameName} dedicated server running in a few quick steps. You can skip
           this any time — everything's also available from the sidebar.
         </p>
       ),

@@ -12,6 +12,7 @@ interface Props {
   config: AppConfig | null;
   refresh: () => void;
   notify: (msg: string, error?: boolean) => void;
+  gameName: string;
 }
 
 const DEFAULTS: Automation = {
@@ -26,7 +27,7 @@ const DEFAULTS: Automation = {
   autoUpdateIntervalHours: 6,
 };
 
-export default function AutomationPage({ config, refresh, notify }: Props) {
+export default function AutomationPage({ config, refresh, notify, gameName }: Props) {
   const [form, setForm] = useState<Automation>(config?.automation ?? DEFAULTS);
   const [announcements, setAnnouncements] = useState<Announcement[]>(config?.announcements ?? []);
   const [saving, setSaving] = useState(false);
@@ -188,7 +189,7 @@ export default function AutomationPage({ config, refresh, notify }: Props) {
           <Toggle on={form.autoUpdateEnabled} onChange={(v) => set("autoUpdateEnabled", v)} />
         </div>
         <p style={{ color: "var(--text-dim)" }}>
-          Keeps the <strong>Palworld dedicated server (the game)</strong> — not this app — on the
+          Keeps the <strong>{gameName} dedicated server (the game)</strong> — not this app — on the
           latest build. When a new version drops it warns players, saves, updates, and restarts.
         </p>
         <div className="row" style={{ gap: 16 }}>
