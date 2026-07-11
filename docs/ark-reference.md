@@ -134,9 +134,21 @@ Takeaways (from a sampled subset — full set reviewed per-group at build time):
   immediate-updates toggles. We already have connectivity/UPnP, update checks, and a crash watchdog —
   good overlap to reuse.
 
-## Still needed for the adapter build
+## Adapter build status
 
-- ✅ `GameUserSettings.ini` + `Game.ini` samples received at `C:\Users\Rhyse\Documents\ark-samples\`
-  (structure analyzed above — ready to build/unit-test the multi-section INI parser against them).
-- ~11 GB dedicated-server download (app 2430930) only for the final live shakedown
-  (SteamCMD install + start/stop detection + an RCON round-trip).
+- ✅ `GameUserSettings.ini` + `Game.ini` samples at `C:\Users\Rhyse\Documents\ark-samples\` (analyzed).
+- ✅ **ARK adapter scaffold + config parser built** (`src-tauri/src/game/ark/`): `GameSpec` with the
+  verified values above, and a section-aware INI parser/in-place writer for both files handling the
+  duplicate-key arrays, quotes/empties/bools, and comment/format preservation. Registered via
+  `game::by_id("ark-sa")`; unit-tested. Fields use composite keys `<file>|<section>|<key>#<occ>`.
+- ⏭️ **Next for ARK (in order):**
+  1. **`launch_args`** — assemble `<Map>?listen -Port=… -QueryPort=… -RCONPort=… -mods=… -flags`
+     from the config values (see the launch-line breakdown above); thread into `server::start`.
+  2. **Per-profile game selection** — each profile pins a game; `active()` reads it; add-server / first-run
+     wizard asks which game; sidebar game switcher. (Makes ARK actually selectable.)
+  3. **Live control behind a trait** — wrap `rest.rs` (Palworld) and `rcon.rs` (ARK) in a
+     `LiveControlClient` trait; ARK's players/kick/ban/announce go over RCON.
+  4. **Config UI polish** — schema/labels/groups + filter out the graphics section
+     (`[/Script/ShooterGame.ShooterGameUserSettings]`) so ARK's Config page is usable.
+  5. **~11 GB dedicated-server download** (app 2430930) for the final live shakedown: SteamCMD install +
+     start/stop detection + an RCON round-trip against a running server.
