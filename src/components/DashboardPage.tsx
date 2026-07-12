@@ -22,6 +22,12 @@ export default function DashboardPage({ notify }: Props) {
   const [history, setHistory] = useState<{ players: number; fps: number }[]>([]);
   const [bans, setBans] = useState<string[]>([]);
   const [unbanId, setUnbanId] = useState("");
+  // Live-control mechanism of the active game: "rest" (Palworld), "rcon" (ARK), or "none".
+  const [live, setLive] = useState<"rest" | "rcon" | "none" | null>(null);
+
+  useEffect(() => {
+    api.gameInfo().then((g) => setLive(g.liveControl)).catch(() => setLive("rest"));
+  }, []);
 
   async function loadBans() {
     try {
@@ -43,20 +49,28 @@ export default function DashboardPage({ notify }: Props) {
   }
 
   const fetchAll = useCallback(async () => {
+    if (live === null) return;
     try {
-      const ov = await api.restOverview();
-      setOverview(ov);
-      setError(null);
-      setHistory((h) => [
-        ...h.slice(-89),
-        { players: ov.metrics.currentplayernum, fps: ov.metrics.serverfps },
-      ]);
-      try {
+      if (live === "rest") {
+        const ov = await api.restOverview();
+        setOverview(ov);
+        setHistory((h) => [
+          ...h.slice(-89),
+          { players: ov.metrics.currentplayernum, fps: ov.metrics.serverfps },
+        ]);
+        try {
+          setPlayers(await api.restPlayers());
+        } catch {
+          setPlayers([]);
+        }
+        loadBans();
+      } else if (live === "rcon") {
+        // No REST metrics for RCON games — just the player list + actions.
         setPlayers(await api.restPlayers());
-      } catch {
-        setPlayers([]);
+      } else {
+        throw new Error("This game doesn't support live control while running.");
       }
-      loadBans();
+      setError(null);
     } catch (e) {
       setError(String(e));
       setOverview(null);
@@ -64,7 +78,7 @@ export default function DashboardPage({ notify }: Props) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [live]);
 
   useEffect(() => {
     fetchAll();
@@ -129,45 +143,50 @@ export default function DashboardPage({ notify }: Props) {
     return <div className="empty">Connecting to server…</div>;
   }
 
-  if (error || !overview) {
+  if (error) {
     return (
       <>
         <div className="page-head">
           <div>
             <h1>Dashboard</h1>
-            <p>Live control over your running server via the REST API.</p>
+            <p>Live control over your running server.</p>
           </div>
         </div>
         <div className="card">
           <h2>Not connected</h2>
-          <p style={{ color: "var(--text-dim)" }}>{error ?? "The REST API is unavailable."}</p>
+          <p style={{ color: "var(--text-dim)" }}>{error}</p>
           <div className="row">
-            <button className="btn primary" onClick={enable}>
-              Enable REST API
-            </button>
+            {live === "rest" && (
+              <button className="btn primary" onClick={enable}>
+                Enable REST API
+              </button>
+            )}
             <button className="btn" onClick={fetchAll}>
               Retry
             </button>
           </div>
           <p style={{ color: "var(--text-dim)", fontSize: 12, marginBottom: 0 }}>
-            The REST API needs to be enabled with an admin password, and the server must be
-            running. After enabling, restart the server for changes to take effect.
+            {live === "rest"
+              ? "The REST API needs to be enabled with an admin password, and the server must be running. After enabling, restart the server for changes to take effect."
+              : live === "rcon"
+                ? "RCON must be enabled in the server config (RCONEnabled=True with an admin password) and the server must be running."
+                : "This game doesn't offer live control while the server is running."}
           </p>
         </div>
       </>
     );
   }
 
-  const m = overview.metrics;
+  const m = overview?.metrics;
 
   return (
     <>
       <div className="page-head">
         <div>
-          <h1>{overview.info.servername || "Dashboard"}</h1>
+          <h1>{overview?.info.servername || "Dashboard"}</h1>
           <p>
-            {overview.info.description || "Live server control"}
-            {overview.info.version ? ` · v${overview.info.version}` : ""}
+            {overview?.info.description || "Live server control"}
+            {overview?.info.version ? ` · v${overview.info.version}` : ""}
           </p>
         </div>
         <span className="pill ok">
@@ -175,21 +194,25 @@ export default function DashboardPage({ notify }: Props) {
         </span>
       </div>
 
-      <div className="tiles">
-        <Tile label="Players" value={`${m.currentplayernum} / ${m.maxplayernum}`} />
-        <Tile label="Server FPS" value={`${m.serverfps}`} />
-        <Tile label="Frame time" value={`${m.serverframetime.toFixed(1)} ms`} />
-        <Tile label="Uptime" value={formatUptime(m.uptime)} />
-      </div>
-
-      {history.length > 1 && (
-        <div className="card">
-          <h2>Recent activity ({history.length} samples · ~5s each)</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-            <Spark label="Players" color="#22c55e" values={history.map((h) => h.players)} />
-            <Spark label="Server FPS" color="#3b82f6" values={history.map((h) => h.fps)} />
+      {live === "rest" && m && (
+        <>
+          <div className="tiles">
+            <Tile label="Players" value={`${m.currentplayernum} / ${m.maxplayernum}`} />
+            <Tile label="Server FPS" value={`${m.serverfps}`} />
+            <Tile label="Frame time" value={`${m.serverframetime.toFixed(1)} ms`} />
+            <Tile label="Uptime" value={formatUptime(m.uptime)} />
           </div>
-        </div>
+
+          {history.length > 1 && (
+            <div className="card">
+              <h2>Recent activity ({history.length} samples · ~5s each)</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <Spark label="Players" color="#22c55e" values={history.map((h) => h.players)} />
+                <Spark label="Server FPS" color="#3b82f6" values={history.map((h) => h.fps)} />
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="card">
@@ -263,39 +286,41 @@ export default function DashboardPage({ notify }: Props) {
         )}
       </div>
 
-      <div className="card">
-        <h2>Banned players ({bans.length})</h2>
-        <div className="row" style={{ marginBottom: bans.length ? 14 : 0 }}>
-          <input
-            className="search"
-            placeholder="Unban by user id (e.g. steam_7656…)"
-            value={unbanId}
-            onChange={(e) => setUnbanId(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && unban(unbanId)}
-          />
-          <button className="btn primary" onClick={() => unban(unbanId)} disabled={!unbanId.trim()}>
-            Unban
-          </button>
+      {live === "rest" && (
+        <div className="card">
+          <h2>Banned players ({bans.length})</h2>
+          <div className="row" style={{ marginBottom: bans.length ? 14 : 0 }}>
+            <input
+              className="search"
+              placeholder="Unban by user id (e.g. steam_7656…)"
+              value={unbanId}
+              onChange={(e) => setUnbanId(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && unban(unbanId)}
+            />
+            <button className="btn primary" onClick={() => unban(unbanId)} disabled={!unbanId.trim()}>
+              Unban
+            </button>
+          </div>
+          {bans.length === 0 ? (
+            <p style={{ color: "var(--text-dim)", margin: 0 }}>No banned players.</p>
+          ) : (
+            <table className="table">
+              <tbody>
+                {bans.map((id) => (
+                  <tr key={id}>
+                    <td style={{ fontFamily: "monospace" }}>{id}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button className="btn" onClick={() => unban(id)}>
+                        Unban
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-        {bans.length === 0 ? (
-          <p style={{ color: "var(--text-dim)", margin: 0 }}>No banned players.</p>
-        ) : (
-          <table className="table">
-            <tbody>
-              {bans.map((id) => (
-                <tr key={id}>
-                  <td style={{ fontFamily: "monospace" }}>{id}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button className="btn" onClick={() => unban(id)}>
-                      Unban
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      )}
     </>
   );
 }
