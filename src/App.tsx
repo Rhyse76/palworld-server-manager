@@ -56,6 +56,16 @@ export default function App() {
     api.gamesList().then(setGames).catch(() => {});
   }, []);
 
+  // If the active game hides the current page (e.g. switching to ARK while on
+  // Mods/Save tools), fall back to the Server page.
+  useEffect(() => {
+    const gameId = config?.profiles.find((p) => p.id === config.activeProfile)?.game ?? "palworld";
+    const g = games.find((x) => x.id === gameId);
+    if ((page === "mods" && g?.hasMods === false) || (page === "saves" && gameId !== "palworld")) {
+      setPage("server");
+    }
+  }, [config, games, page]);
+
   // Load status and config independently so a transient failure in one doesn't
   // discard the other (previously a single Promise.all could drop a good status).
   // Returns true only when both succeeded.
@@ -109,8 +119,17 @@ export default function App() {
 
   const activeProfileObj = config?.profiles.find((p) => p.id === config.activeProfile);
   const activeName = activeProfileObj?.name;
-  const activeGameName =
-    games.find((g) => g.id === activeProfileObj?.game)?.displayName ?? "Palworld";
+  const activeGame = games.find((g) => g.id === activeProfileObj?.game);
+  const activeGameId = activeProfileObj?.game ?? "palworld";
+  const activeGameName = activeGame?.displayName ?? "Palworld";
+
+  // Hide pages that don't apply to the active game: Mods (games without a drop-in
+  // mods folder, e.g. ARK) and Save tools (Palworld's GVAS format only).
+  const visibleNav = NAV.filter((n) => {
+    if (n.id === "mods") return activeGame?.hasMods !== false;
+    if (n.id === "saves") return activeGameId === "palworld";
+    return true;
+  });
 
   return (
     <div className="app">
@@ -120,7 +139,7 @@ export default function App() {
           <div className="brand-sub">{activeGameName}</div>
         </div>
         <nav className="nav">
-          {NAV.map((n) => (
+          {visibleNav.map((n) => (
             <button
               key={n.id}
               className={page === n.id ? "active" : ""}
