@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { api, type StatusInfo } from "../api";
+import { useEffect, useState } from "react";
+import { api, onInstallLog, onInstallProgress, type StatusInfo } from "../api";
 
 interface Props {
   status: StatusInfo | null;
@@ -13,10 +13,22 @@ interface Props {
 export default function FirstRunWizard({ status, refresh, notify, gameName, onClose }: Props) {
   const [step, setStep] = useState(0);
   const [working, setWorking] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [phase, setPhase] = useState("");
   const installed = status?.installed ?? false;
+
+  useEffect(() => {
+    const un = [
+      onInstallProgress((p) => setProgress(p)),
+      onInstallLog((l) => setPhase(l)),
+    ];
+    return () => un.forEach((p) => p.then((fn) => fn()));
+  }, []);
 
   async function install() {
     setWorking(true);
+    setProgress(0);
+    setPhase("Preparing…");
     try {
       notify("Downloading the server (several GB) — this can take a few minutes.");
       await api.installServer();
@@ -26,6 +38,7 @@ export default function FirstRunWizard({ status, refresh, notify, gameName, onCl
       notify(String(e), true);
     } finally {
       setWorking(false);
+      setProgress(null);
     }
   }
 
@@ -91,6 +104,17 @@ export default function FirstRunWizard({ status, refresh, notify, gameName, onCl
               <button className="btn" onClick={detect} disabled={working}>
                 Detect existing
               </button>
+            </div>
+          )}
+          {progress !== null && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>
+                {phase || "Preparing…"}
+                {progress > 0 ? ` · ${progress.toFixed(0)}%` : ""}
+              </div>
+              <div className={`progress${progress > 0 ? "" : " indeterminate"}`}>
+                <span style={progress > 0 ? { width: `${progress}%` } : undefined} />
+              </div>
             </div>
           )}
         </>
