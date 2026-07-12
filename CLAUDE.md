@@ -161,10 +161,10 @@ Every release MUST be **signed** and ship a matching `latest.json`, or self-upda
 
 1. Bump version everywhere: `tauri.conf.json`, `src/App.tsx` footer, `SettingsPage` About,
    `msix/*` (`0.x.0.0`), and the site (`softwareVersion` + `vX` label).
-2. **Signed build** (private key lives OUTSIDE the repo at `~/.tauri-keys/palworld-updater.key`,
-   empty password; pubkey is in `tauri.conf.json > plugins.updater`):
+2. **Signed build** (private key lives OUTSIDE the repo — path is in `CLAUDE.local.md`'s
+   secrets section; empty password; pubkey is in `tauri.conf.json > plugins.updater`):
    ```
-   TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri-keys/palworld-updater.key)" \
+   TAURI_SIGNING_PRIVATE_KEY="$(cat <path-from-CLAUDE.local.md>)" \
    TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" npm run tauri build
    ```
    Produces `…-setup.exe` and `…-setup.exe.sig` under `target/release/bundle/nsis/`.
