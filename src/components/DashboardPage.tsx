@@ -250,10 +250,10 @@ export default function DashboardPage({ notify }: Props) {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Level</th>
-                <th>Ping</th>
+                {live === "rest" && <th>Level</th>}
+                {live === "rest" && <th>Ping</th>}
                 <th>Steam ID</th>
-                <th>Player UID</th>
+                {live === "rest" && <th>Player UID</th>}
                 <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
@@ -261,14 +261,16 @@ export default function DashboardPage({ notify }: Props) {
               {players.map((p) => (
                 <tr key={p.playerId || p.userId || p.name}>
                   <td>{p.name || "(unknown)"}</td>
-                  <td>{p.level || "—"}</td>
-                  <td>{p.ping ? `${p.ping.toFixed(0)} ms` : "—"}</td>
+                  {live === "rest" && <td>{p.level || "—"}</td>}
+                  {live === "rest" && <td>{p.ping ? `${p.ping.toFixed(0)} ms` : "—"}</td>}
                   <td>
                     <IdCell value={p.userId} label="Steam ID" notify={notify} />
                   </td>
-                  <td>
-                    <IdCell value={p.playerId} label="Player UID" notify={notify} />
-                  </td>
+                  {live === "rest" && (
+                    <td>
+                      <IdCell value={p.playerId} label="Player UID" notify={notify} />
+                    </td>
+                  )}
                   <td style={{ textAlign: "right" }}>
                     <button className="btn" onClick={() => moderate(p, "kick")}>
                       Kick

@@ -11,7 +11,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tauri::{AppHandle, Manager};
 
-use crate::{backups, discord, logs, rest, server, settings, updates};
+use crate::{backups, discord, logs, server, settings, updates};
 
 const TICK: Duration = Duration::from_secs(60);
 
@@ -84,7 +84,7 @@ fn tick(app: &AppHandle) {
                 let players = if a.smart_restart {
                     settings::install_dir(app)
                         .ok()
-                        .and_then(|d| tauri::async_runtime::block_on(rest::players(&d)).ok())
+                        .and_then(|d| tauri::async_runtime::block_on(crate::game::live::players(&d)).ok())
                         .map(|p| p.len())
                         .unwrap_or(0)
                 } else {
@@ -122,7 +122,7 @@ fn tick(app: &AppHandle) {
                 }
                 Some(prev) if (t.saturating_sub(prev)) as f64 >= ann.interval_minutes * 60.0 => {
                     if let Some(d) = &dir {
-                        let _ = tauri::async_runtime::block_on(rest::announce(d, &ann.message));
+                        let _ = tauri::async_runtime::block_on(crate::game::live::announce(d, &ann.message));
                     }
                     last.insert(ann.id.clone(), t);
                 }
@@ -216,9 +216,9 @@ pub fn run_restart(app: &AppHandle, hide_console: bool, countdown: i64, label: &
     logs::record(app, &format!("{label}: warning players and shutting down ({secs}s)…"));
     discord::notify(app, discord::Event::Restarting(notice.clone()));
     if secs > 0 {
-        let _ = tauri::async_runtime::block_on(rest::announce(&dir, &notice));
+        let _ = tauri::async_runtime::block_on(crate::game::live::announce(&dir, &notice));
     }
-    let shutdown_ok = tauri::async_runtime::block_on(rest::shutdown(&dir, secs, &notice)).is_ok();
+    let shutdown_ok = tauri::async_runtime::block_on(crate::game::live::shutdown(&dir, secs, &notice)).is_ok();
 
     // If the graceful shutdown was accepted, wait for it to go down (up to ~2 min).
     // Otherwise (REST off) skip the wait and force-stop straight away.

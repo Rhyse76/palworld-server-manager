@@ -274,8 +274,8 @@ export default function ServerPage({ status, config, refresh, notify, gameName }
           </button>
         </div>
         <p style={{ color: "var(--text-dim)", margin: "12px 0 0", fontSize: 13 }}>
-          Restart gracefully saves the world and warns players (needs the REST API on);
-          without it, it force-restarts.
+          Restart gracefully saves the world and warns players (needs live control — the REST
+          API or RCON — enabled); without it, it force-restarts.
         </p>
       </div>
 
