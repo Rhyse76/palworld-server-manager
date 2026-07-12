@@ -104,6 +104,29 @@ export default function ConfigPage({ notify }: Props) {
     return Array.from(map.entries());
   }, [shown]);
 
+  // Stable tab list = distinct groups across ALL fields (not affected by search).
+  const allGroups = useMemo(() => {
+    const seen = new Set<string>();
+    const order: string[] = [];
+    for (const f of fields) {
+      const g = f.group ?? "";
+      if (!seen.has(g)) {
+        seen.add(g);
+        order.push(g);
+      }
+    }
+    return order;
+  }, [fields]);
+
+  const searching = filter.trim().length > 0;
+  // Tab the config when there are real groups and we're not searching; otherwise
+  // fall back to a flat, section-headed list (search results / single-group games).
+  const tabbed = allGroups.length > 1 && !searching;
+  const [tab, setTab] = useState("");
+  useEffect(() => {
+    if (!allGroups.includes(tab)) setTab(allGroups[0] ?? "");
+  }, [allGroups, tab]);
+
   if (loaded && error) {
     return (
       <>
@@ -163,28 +186,69 @@ export default function ConfigPage({ notify }: Props) {
         </button>
       </div>
 
-      {groupOrder.map(([group, fs]) => (
-        <div key={group || "_ungrouped"}>
-          {group && (
-            <h3
-              style={{
-                margin: "20px 0 8px",
-                fontSize: 14,
-                color: "var(--accent)",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-              }}
-            >
-              {group}
-            </h3>
-          )}
-          <div className="fields">
-            {fs.map((f) => (
-              <Field key={f.key} field={f} onChange={(v) => update(f.key, v)} />
+      {tabbed ? (
+        <>
+          <div
+            style={{
+              display: "flex",
+              gap: 4,
+              overflowX: "auto",
+              borderBottom: "1px solid var(--border)",
+              margin: "4px 0 16px",
+            }}
+          >
+            {allGroups.map((g) => (
+              <button
+                key={g}
+                onClick={() => setTab(g)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: `2px solid ${g === tab ? "var(--accent)" : "transparent"}`,
+                  color: g === tab ? "var(--text)" : "var(--text-dim)",
+                  padding: "8px 14px",
+                  fontSize: 13,
+                  fontWeight: g === tab ? 600 : 400,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {g || "General"}
+              </button>
             ))}
           </div>
-        </div>
-      ))}
+          <div className="fields">
+            {shown
+              .filter((f) => (f.group ?? "") === tab)
+              .map((f) => (
+                <Field key={f.key} field={f} onChange={(v) => update(f.key, v)} />
+              ))}
+          </div>
+        </>
+      ) : (
+        groupOrder.map(([group, fs]) => (
+          <div key={group || "_ungrouped"}>
+            {group && (
+              <h3
+                style={{
+                  margin: "20px 0 8px",
+                  fontSize: 14,
+                  color: "var(--accent)",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {group}
+              </h3>
+            )}
+            <div className="fields">
+              {fs.map((f) => (
+                <Field key={f.key} field={f} onChange={(v) => update(f.key, v)} />
+              ))}
+            </div>
+          </div>
+        ))
+      )}
       {loaded && shown.length === 0 && <div className="empty">No settings match “{filter}”.</div>}
     </>
   );
