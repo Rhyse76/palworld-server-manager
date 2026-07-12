@@ -145,10 +145,19 @@ Takeaways (from a sampled subset — full set reviewed per-group at build time):
   [-exclusivejoin] -log` from `GameUserSettings [ServerSettings]`; `server::start` appends it.
 - ✅ **Per-profile game selection** — ARK is selectable; switching profile switches the whole app.
 - ✅ **Config UI** — grouped/labeled fields; graphics section filtered out.
-- ⏭️ **Remaining for ARK:**
-  1. **Live control behind a trait** — wrap `rest.rs` (Palworld) and `rcon.rs` (ARK) in a
-     `LiveControlClient` trait; ARK's players/kick/ban/announce go over RCON commands
-     (`ListPlayers`, `KickPlayer`, `BanPlayer`, `Broadcast`, `SaveWorld`, `DoExit`). Also an
-     "enable RCON" helper (set `RCONEnabled=True` + `ServerAdminPassword` in the ini).
-  2. **~11 GB dedicated-server download** (app 2430930) for the final live shakedown: SteamCMD install +
-     `ArkAscendedServer.exe` start/stop detection + an RCON round-trip against a running server.
+- ✅ **Live control over RCON** — `game/ark/live.rs` + `game::live` dispatch (REST vs RCON by
+  capability); Dashboard + nav are capability-gated.
+- ✅ **LIVE SHAKEDOWN PASSED (2026-07)** — installed the 12 GB server via the app (app 2430930 is
+  anonymous), launched with our exact `launch_args` (`TheIsland_WP?listen -Port=7777 -QueryPort=27015
+  -RCONPort=27020 -log`), process detection flipped to Running, config parser rendered the real
+  generated `GameUserSettings.ini`, and the Dashboard connected over RCON (`ListPlayers`). **The full
+  ARK adapter works end-to-end against a real server.**
+  - RCON gotcha found + fixed live: ASA ignores empty commands, so our old empty-command "sentinel"
+    hung; `rcon::exec` now reads the first packet then drains with a short timeout.
+- ⏭️ **Remaining (polish, not blocking function):**
+  1. **ARK settings catalog** — a fresh install's `GameUserSettings.ini` only has ~46 keys (ARK writes
+     no defaults file). Build a curated catalog of known ARK settings (types/defaults/groups) merged
+     with the live file so the Config page shows the full set, like the reference manager.
+  2. **"Enable RCON" helper** — add `RCONEnabled=True` + a generated `ServerAdminPassword` to the ini
+     from the UI (mirrors Palworld's "Enable REST API"); needs an add-key-to-section config write.
+  3. Install-progress bar didn't render for the ARK download (minor UI bug to chase).
