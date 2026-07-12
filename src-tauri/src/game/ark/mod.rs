@@ -8,7 +8,7 @@ use crate::config::ConfigField;
 
 use super::{Game, GameSpec, LiveControl};
 
-mod config;
+pub(super) mod config;
 pub mod live;
 
 pub struct ArkSurvivalAscended;

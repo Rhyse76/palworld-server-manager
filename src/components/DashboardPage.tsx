@@ -88,11 +88,13 @@ export default function DashboardPage({ notify }: Props) {
 
   async function enable() {
     try {
-      const res = await api.enableRestApi();
+      const res = await api.enableLiveControl();
+      const label = live === "rcon" ? "RCON" : "REST API";
       const pw = res.generatedPassword
         ? `A new admin password was generated: ${res.adminPassword}`
         : "Using your existing admin password.";
-      notify(`REST API enabled on port ${res.port}. ${pw} Restart the server to apply.`);
+      const restart = live === "rcon" ? "Start" : "Restart";
+      notify(`${label} enabled on port ${res.port}. ${pw} ${restart} the server to apply.`);
     } catch (e) {
       notify(String(e), true);
     }
@@ -156,9 +158,9 @@ export default function DashboardPage({ notify }: Props) {
           <h2>Not connected</h2>
           <p style={{ color: "var(--text-dim)" }}>{error}</p>
           <div className="row">
-            {live === "rest" && (
+            {(live === "rest" || live === "rcon") && (
               <button className="btn primary" onClick={enable}>
-                Enable REST API
+                {live === "rcon" ? "Enable RCON" : "Enable REST API"}
               </button>
             )}
             <button className="btn" onClick={fetchAll}>

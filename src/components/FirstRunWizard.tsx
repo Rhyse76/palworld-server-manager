@@ -50,7 +50,7 @@ export default function FirstRunWizard({ status, refresh, notify, gameName, onCl
   async function enableRest() {
     setWorking(true);
     try {
-      const res = await api.enableRestApi();
+      const res = await api.enableLiveControl();
       notify(
         res.generatedPassword
           ? `Live dashboard enabled. Admin password: ${res.adminPassword} (restart the server to apply).`

@@ -153,7 +153,7 @@ export const api = {
   restSave: () => invoke<void>("rest_save"),
   restShutdown: (seconds: number, message: string) =>
     invoke<void>("rest_shutdown", { seconds, message }),
-  enableRestApi: () => invoke<EnableResult>("enable_rest_api"),
+  enableLiveControl: () => invoke<EnableResult>("enable_live_control"),
 
   // Backups
   backupCreate: () => invoke<string>("backup_create"),

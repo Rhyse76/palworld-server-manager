@@ -259,9 +259,9 @@ async fn rest_shutdown(app: AppHandle, seconds: i64, message: String) -> Result<
 }
 
 #[tauri::command]
-fn enable_rest_api(app: AppHandle) -> Result<rest::EnableResult, String> {
+fn enable_live_control(app: AppHandle) -> Result<rest::EnableResult, String> {
     let dir = settings::install_dir(&app)?;
-    rest::enable(&dir)
+    game::live::enable(&dir)
 }
 
 // ---- Backups ----
@@ -461,7 +461,7 @@ pub fn run() {
             bans_list,
             rest_save,
             rest_shutdown,
-            enable_rest_api,
+            enable_live_control,
             backup_create,
             backup_list,
             backup_restore,

@@ -267,6 +267,91 @@ pub fn import(path: &Path) -> Result<Vec<ConfigField>, String> {
         .collect())
 }
 
+/// Enable RCON: set `RCONEnabled=True`/`RCONPort` and ensure a `ServerAdminPassword`
+/// (generating one if none), all in `[ServerSettings]`. Returns the port + password.
+/// The server must be stopped when this runs (ARK rewrites the ini on shutdown) and
+/// restarted to apply — the caller enforces the stopped state.
+pub fn enable_rcon(install_dir: &Path) -> Result<crate::rest::EnableResult, String> {
+    let path = gus_path(install_dir);
+    let text = fs::read_to_string(&path)
+        .map_err(|_| "No GameUserSettings.ini yet — run the server once to generate it.".to_string())?;
+    let port: u16 = server_setting(install_dir, "RCONPort")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(27020);
+    let existing = server_setting(install_dir, "ServerAdminPassword").filter(|s| !s.trim().is_empty());
+    let generated_password = existing.is_none();
+    let password = existing.unwrap_or_else(random_password);
+    let out = upsert_server_settings(
+        &text,
+        &[
+            ("RCONEnabled", "True".to_string()),
+            ("RCONPort", port.to_string()),
+            ("ServerAdminPassword", password.clone()),
+        ],
+    );
+    fs::write(&path, out).map_err(|e| e.to_string())?;
+    Ok(crate::rest::EnableResult { port, admin_password: password, generated_password })
+}
+
+/// Update or insert keys within `[ServerSettings]`, preserving the rest of the file.
+/// Missing keys are inserted right after the section header; the section is created
+/// if absent.
+fn upsert_server_settings(text: &str, changes: &[(&str, String)]) -> String {
+    let nl = if text.contains("\r\n") { "\r\n" } else { "\n" };
+    let trailing = text.ends_with('\n');
+    let mut lines: Vec<String> = text.lines().map(String::from).collect();
+
+    let hi = match lines.iter().position(|l| l.trim() == "[ServerSettings]") {
+        Some(i) => i,
+        None => {
+            lines.push("[ServerSettings]".into());
+            lines.len() - 1
+        }
+    };
+    // End of the section (next header or EOF), computed before any inserts.
+    let end = (hi + 1..lines.len())
+        .find(|&i| lines[i].trim().starts_with('['))
+        .unwrap_or(lines.len());
+
+    let mut to_insert = Vec::new();
+    for (key, value) in changes {
+        let existing = (hi + 1..end).find(|&i| {
+            lines[i].split_once('=').map(|(k, _)| k.trim() == *key).unwrap_or(false)
+        });
+        match existing {
+            Some(i) => lines[i] = format!("{key}={value}"),
+            None => to_insert.push(format!("{key}={value}")),
+        }
+    }
+    for (offset, line) in to_insert.into_iter().enumerate() {
+        lines.insert(hi + 1 + offset, line);
+    }
+
+    let mut out = lines.join(nl);
+    if trailing {
+        out.push_str(nl);
+    }
+    out
+}
+
+/// Small non-cryptographic password for local admin convenience.
+fn random_password() -> String {
+    const CHARS: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    let mut seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0x9E37_79B9_7F4A_7C15)
+        ^ std::process::id() as u64;
+    (0..16)
+        .map(|_| {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            CHARS[(seed % CHARS.len() as u64) as usize] as char
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -350,6 +435,23 @@ ConfigOverrideItemMaxQuantity=(B)\n";
         assert!(d.contains(&"-QueryPort=27015".to_string()));
         assert!(!d.iter().any(|a| a.starts_with("-mods")));
         assert!(!d.contains(&"-exclusivejoin".to_string()));
+    }
+
+    #[test]
+    fn upsert_adds_and_updates_server_settings() {
+        let text = "[ServerSettings]\nXPMultiplier=5\n\n[SessionSettings]\nSessionName=Rhyse\n";
+        let out = upsert_server_settings(
+            text,
+            &[
+                ("XPMultiplier", "10".into()), // update existing
+                ("RCONEnabled", "True".into()), // insert new
+            ],
+        );
+        assert!(out.contains("XPMultiplier=10"));
+        assert!(out.contains("RCONEnabled=True"));
+        assert!(out.contains("SessionName=Rhyse")); // other section preserved
+        // The inserted key lands inside [ServerSettings], before the next section.
+        assert!(out.find("RCONEnabled").unwrap() < out.find("[SessionSettings]").unwrap());
     }
 
     #[test]

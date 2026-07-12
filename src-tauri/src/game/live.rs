@@ -25,6 +25,21 @@ where
         .map_err(|e| e.to_string())?
 }
 
+/// Enable the active game's live control (Palworld REST or ARK RCON), setting up
+/// config as needed. Synchronous (config writes only).
+pub fn enable(dir: &Path) -> Result<rest::EnableResult, String> {
+    match active().spec().live_control {
+        LiveControl::RestApi => rest::enable(dir),
+        LiveControl::Rcon => {
+            if crate::server::is_running() {
+                return Err("Stop the ARK server first — it rewrites its config on shutdown. Enable RCON while stopped, then start.".into());
+            }
+            ark::config::enable_rcon(dir)
+        }
+        LiveControl::None => Err("This game has no live control to enable.".into()),
+    }
+}
+
 pub async fn players(dir: &Path) -> Result<Vec<Player>, String> {
     match active().spec().live_control {
         LiveControl::RestApi => rest::players(dir).await,
