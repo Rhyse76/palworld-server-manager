@@ -200,13 +200,13 @@ async fn rest_overview(app: AppHandle) -> Result<rest::Overview, String> {
 #[tauri::command]
 async fn rest_players(app: AppHandle) -> Result<Vec<rest::Player>, String> {
     let dir = settings::install_dir(&app)?;
-    rest::players(&dir).await
+    game::live::players(&dir).await
 }
 
 #[tauri::command]
 async fn rest_announce(app: AppHandle, message: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::announce(&dir, &message).await?;
+    game::live::announce(&dir, &message).await?;
     logs::record(&app, &format!("Broadcast: {message}"));
     Ok(())
 }
@@ -214,7 +214,7 @@ async fn rest_announce(app: AppHandle, message: String) -> Result<(), String> {
 #[tauri::command]
 async fn rest_kick(app: AppHandle, userid: String, message: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::kick(&dir, &userid, &message).await?;
+    game::live::kick(&dir, &userid, &message).await?;
     logs::record(&app, &format!("Kicked {userid}."));
     Ok(())
 }
@@ -222,7 +222,7 @@ async fn rest_kick(app: AppHandle, userid: String, message: String) -> Result<()
 #[tauri::command]
 async fn rest_ban(app: AppHandle, userid: String, message: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::ban(&dir, &userid, &message).await?;
+    game::live::ban(&dir, &userid, &message).await?;
     logs::record(&app, &format!("Banned {userid}."));
     Ok(())
 }
@@ -230,7 +230,7 @@ async fn rest_ban(app: AppHandle, userid: String, message: String) -> Result<(),
 #[tauri::command]
 async fn rest_unban(app: AppHandle, userid: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::unban(&dir, &userid).await?;
+    game::live::unban(&dir, &userid).await?;
     logs::record(&app, &format!("Unbanned {userid}."));
     Ok(())
 }
@@ -243,7 +243,7 @@ fn bans_list(app: AppHandle) -> Result<Vec<String>, String> {
 #[tauri::command]
 async fn rest_save(app: AppHandle) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
-    rest::save(&dir).await?;
+    game::live::save(&dir).await?;
     logs::record(&app, "World saved.");
     Ok(())
 }
@@ -253,7 +253,7 @@ async fn rest_shutdown(app: AppHandle, seconds: i64, message: String) -> Result<
     let dir = settings::install_dir(&app)?;
     // A graceful shutdown from the UI is an intentional stop.
     automation::set_supervise(&app, false);
-    rest::shutdown(&dir, seconds, &message).await?;
+    game::live::shutdown(&dir, seconds, &message).await?;
     logs::record(&app, &format!("Graceful shutdown requested ({seconds}s)."));
     Ok(())
 }

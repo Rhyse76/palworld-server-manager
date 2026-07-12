@@ -216,7 +216,7 @@ pub fn write(install_dir: &Path, fields: &[ConfigField]) -> Result<(), String> {
 }
 
 /// Look up a `[ServerSettings]` value from `GameUserSettings.ini`.
-fn server_setting(install_dir: &Path, key: &str) -> Option<String> {
+pub(super) fn server_setting(install_dir: &Path, key: &str) -> Option<String> {
     let text = fs::read_to_string(gus_path(install_dir)).ok()?;
     let (_lines, entries) = parse("gus", &text);
     entries

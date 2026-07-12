@@ -14,6 +14,7 @@ use std::sync::RwLock;
 use crate::config::ConfigField;
 
 mod ark;
+pub mod live;
 mod palworld;
 
 /// Ids of all supported games, in display order (for the game picker).
