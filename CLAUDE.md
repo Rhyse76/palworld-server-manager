@@ -6,37 +6,8 @@ managers (which are largely abandoned or partly broken).
 
 This project is **independent** of any other repo on this machine.
 
-## Current status — multi-game is SHIPPED (2026-07)
-
-The "multi-game support" plan in the backlog below is **done, not future**. The app is now a
-game-adapter engine (`src-tauri/src/game/`, `Game` trait + `GameSpec`, `game::active()` resolves
-the active game off the active profile) driving two live-validated games:
-
-- **Palworld** — REST live control (port 8212).
-- **ARK: Survival Ascended** — RCON live control (Steam app `2430930`), validated end-to-end
-  against a real server. `rcon.rs` (Source RCON) is built. Config spans `GameUserSettings.ini`
-  + `Game.ini` + launch args.
-
-The UI is capability-aware (`liveControl`: rest/rcon/none, `hasMods`). Current version **0.4.4**.
-
-**Punch list (what's left):**
-1. **ARK settings catalog** (biggest — start a FRESH session). Merge a curated catalog of known
-   ARK settings (types/defaults/groups) with the live file so Config shows the full set, not just
-   the ~46 ARK writes. Needs: merge infra in `ark::config::read`; write-back that INSERTS new keys
-   into the right file+section (generalize `upsert_server_settings`, route by composite key); and
-   authoring the data. Config-page tabs already wired to receive it.
-2. **Full rebrand → "RhyseGaming Server Manager"** (repo, updater endpoint, installer, Store
-   display name — keep the bundle identifier stable). Decision + gotchas in the multi-game section
-   below.
-3. **Enshrouded adapter** (3rd game — install/update/config/automation only, no live protocol).
-4. **MS Store cert for v0.4.4** — pending. If it fails again for the same reason, reply to the
-   feedback / open a Partner Center ticket — don't blind-resubmit.
-5. Small/manual: ARK detection in `detect.rs` (Palworld-only today); About-page trademark
-   disclaimer stays Palworld-specific until the rebrand.
-
-**Working style (user is credit-conscious):** batch edits → `npx tsc --noEmit` + `cargo check` →
-commit → push. Keep responses lean. Do NOT run `tauri dev` — its recompile kills the ARK child
-server. Start a fresh session per task; long sessions cost more per turn and compaction spikes it.
+> Current status, the active punch list, and working notes live in `CLAUDE.local.md`
+> (gitignored, not published). It also auto-loads for Claude.
 
 ## Stack
 
