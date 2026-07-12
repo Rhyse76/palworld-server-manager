@@ -25,6 +25,7 @@ const MAX_LEN: i32 = 8192;
 pub struct RconClient {
     stream: TcpStream,
     next_id: i32,
+    timeout: Duration,
 }
 
 /// Encode one packet: `[len][id][type][body\0][\0]`.
@@ -60,7 +61,7 @@ impl RconClient {
             .map_err(|e| format!("RCON connect to {host}:{port} failed: {e}"))?;
         stream.set_read_timeout(Some(timeout)).ok();
         stream.set_write_timeout(Some(timeout)).ok();
-        let mut client = RconClient { stream, next_id: 1 };
+        let mut client = RconClient { stream, next_id: 1, timeout };
         client.auth(password)?;
         Ok(client)
     }
@@ -82,21 +83,25 @@ impl RconClient {
         }
     }
 
-    /// Run a command and return the server's response text. Handles multi-packet
-    /// responses via an empty trailing command as an end-of-response sentinel.
+    /// Run a command and return the server's response text.
+    ///
+    /// We read the first response packet with the normal timeout, then drain any
+    /// additional packets (large responses can span several) with a short timeout,
+    /// stopping when no more arrive. This avoids the empty-command "sentinel" trick,
+    /// which ARK: SA doesn't answer (it ignores empty commands, causing a hang).
     pub fn exec(&mut self, command: &str) -> Result<String, String> {
-        let cmd_id = self.write_packet(SERVERDATA_EXECCOMMAND, command)?;
-        let sentinel_id = self.write_packet(SERVERDATA_EXECCOMMAND, "")?;
-        let mut out = String::new();
-        loop {
-            let (rid, _rtype, body) = self.read_packet()?;
-            if rid == sentinel_id {
-                break; // reached the echo of the empty sentinel command
-            }
-            if rid == cmd_id {
-                out.push_str(&body);
-            }
+        self.write_packet(SERVERDATA_EXECCOMMAND, command)?;
+        let (_id, _ty, first) = self.read_packet()?;
+        let mut out = first;
+
+        // Drain follow-up packets quickly; a timeout just means the response ended.
+        self.stream
+            .set_read_timeout(Some(Duration::from_millis(300)))
+            .ok();
+        while let Ok((_i, _t, body)) = self.read_packet() {
+            out.push_str(&body);
         }
+        self.stream.set_read_timeout(Some(self.timeout)).ok();
         Ok(out)
     }
 
