@@ -350,4 +350,36 @@ mod tests {
     fn import_rejects_non_json() {
         assert!(import(Path::new("does-not-exist.json")).is_err());
     }
+
+    // Exercises the full path — crate::config::{read,write} → game::active() dispatch →
+    // this module's read/write — against a real file on disk, not just `apply()` on an
+    // in-memory string. Mutates the process-global active game; reset at the end since
+    // no other test currently depends on the default (Palworld), but that's the
+    // assumption to revisit if a future test starts relying on it.
+    #[test]
+    fn full_read_write_round_trip_through_the_shared_config_path() {
+        crate::game::set_active("enshrouded");
+        let dir = std::env::temp_dir().join(format!("pwsm-enshrouded-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("enshrouded_server.json"), SAMPLE).unwrap();
+
+        let mut fields = crate::config::read(&dir).unwrap();
+        for f in fields.iter_mut() {
+            if f.key == "name" {
+                f.value = "Renamed via full path".to_string();
+            }
+        }
+        crate::config::write(&dir, &fields).unwrap();
+
+        let reread = crate::config::read(&dir).unwrap();
+        assert_eq!(reread.iter().find(|f| f.key == "name").unwrap().value, "Renamed via full path");
+
+        // Unmodeled data survives the full write path too, not just apply() in isolation.
+        let text = fs::read_to_string(dir.join("enshrouded_server.json")).unwrap();
+        assert!(text.contains("bannedAccounts"));
+
+        fs::remove_dir_all(&dir).ok();
+        crate::game::set_active("palworld");
+    }
 }

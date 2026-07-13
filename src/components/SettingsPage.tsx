@@ -184,9 +184,11 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
           <strong>Palworld Server Manager</strong> · v0.4.4
         </p>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
-          An unofficial, community-made tool for running a Palworld dedicated server. Not
-          affiliated with or endorsed by Pocketpair, Inc. “Palworld” is a trademark of its
-          respective owner.
+          An unofficial, community-made tool for running dedicated servers for Palworld,
+          ARK: Survival Ascended, and Enshrouded. Not affiliated with or endorsed by
+          Pocketpair, Inc., Studio Wildcard, or Keen Games GmbH. “Palworld,”
+          “ARK: Survival Ascended,” and “Enshrouded” are trademarks of their respective
+          owners.
         </p>
         <p style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 0 }}>
           © 2026 PatchWork Labs, LLC.
