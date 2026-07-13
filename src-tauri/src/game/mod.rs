@@ -14,15 +14,14 @@ use std::sync::RwLock;
 use crate::config::ConfigField;
 
 mod ark;
+mod enshrouded;
 pub mod live;
 mod palworld;
 
 /// Ids of all supported games, in display order (for the game picker).
-const IDS: &[&str] = &["palworld", "ark-sa"];
+const IDS: &[&str] = &["palworld", "ark-sa", "enshrouded"];
 
 /// How a game exposes live control (players, kick/ban, announce) while running.
-// `None` isn't constructed until the Enshrouded adapter lands.
-#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LiveControl {
     /// HTTP REST admin API (Palworld).
@@ -34,8 +33,6 @@ pub enum LiveControl {
 }
 
 /// How a game exposes user-installable mods.
-// `None` isn't constructed until the Enshrouded adapter lands.
-#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ModsKind {
     /// Drop-in files in an install-relative directory (Palworld `.pak`).
@@ -108,6 +105,7 @@ pub fn by_id(id: &str) -> Option<&'static dyn Game> {
     match id {
         "palworld" => Some(&palworld::Palworld),
         "ark-sa" => Some(&ark::ArkSurvivalAscended),
+        "enshrouded" => Some(&enshrouded::Enshrouded),
         _ => None,
     }
 }
