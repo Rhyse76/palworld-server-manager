@@ -196,6 +196,7 @@ export const api = {
   modIdsList: () => invoke<string[]>("mods_id_list"),
   modIdAdd: (id: string) => invoke<void>("mod_id_add", { id }),
   modIdRemove: (id: string) => invoke<void>("mod_id_remove", { id }),
+  modIdDeleteFiles: (id: string) => invoke<void>("mod_id_delete_files", { id }),
 
   // Saves (M4)
   inspectSave: () => invoke<SaveInfo>("inspect_save"),

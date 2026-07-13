@@ -42,9 +42,11 @@ pub enum ModsKind {
     LocalFiles(&'static str),
     /// A comma-separated CurseForge project-id list stored in one config field
     /// (its composite `ConfigField` key), e.g. ARK: SA's `ActiveMods`. The game's own
-    /// launcher downloads/updates the mod content itself from the id list — we only
-    /// manage which ids are active, not the mod files.
-    CurseForgeIds { active_key: &'static str },
+    /// launcher downloads/updates the mod content itself from the id list into
+    /// `cache_dir_rel` (subfolders named `<mod-id>_<file-id>`, one level under an
+    /// opaque session/list-hash folder) — we manage which ids are active and can
+    /// clear a mod's cached files, but never download/unpack anything ourselves.
+    CurseForgeIds { active_key: &'static str, cache_dir_rel: &'static str },
     /// No mod support (Enshrouded, for now).
     None,
 }

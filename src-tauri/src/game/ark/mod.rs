@@ -25,8 +25,13 @@ static SPEC: GameSpec = GameSpec {
     default_config: None, // ARK ships no defaults file; the game generates the ini
     saves_rel: "ShooterGame/Saved/SavedArks",
     // ActiveMods is a comma-separated CurseForge project-id list in [ServerSettings];
-    // ARK downloads/updates the mod content itself from the ids via `-mods=`/`-allowcfcore`.
-    mods: ModsKind::CurseForgeIds { active_key: "gus|[ServerSettings]|ActiveMods#0" },
+    // ARK downloads/updates the mod content itself from the ids via `-mods=`/`-allowcfcore`,
+    // caching it under cache_dir_rel (confirmed against a real install, 2026-07: e.g.
+    // `.../Mods/83374/940975_8362419/`, the leading number an opaque session/list-hash dir).
+    mods: ModsKind::CurseForgeIds {
+        active_key: "gus|[ServerSettings]|ActiveMods#0",
+        cache_dir_rel: "ShooterGame/Binaries/Win64/ShooterGame/Mods",
+    },
     default_game_port: 7777,
     live_control: LiveControl::Rcon,
 };

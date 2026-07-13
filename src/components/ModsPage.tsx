@@ -185,7 +185,7 @@ function CurseForgeIdMods({ notify }: Props) {
   }
 
   async function remove(id: string) {
-    const yes = await ask(`Remove mod ${id} from the active list?`, {
+    const yes = await ask(`Remove mod ${id} from the active list? Any files ARK already downloaded for it are left in place.`, {
       title: "Remove mod",
       kind: "warning",
     });
@@ -193,6 +193,21 @@ function CurseForgeIdMods({ notify }: Props) {
     try {
       await api.modIdRemove(id);
       notify("Mod removed from the active list.");
+      load();
+    } catch (e) {
+      notify(String(e), true);
+    }
+  }
+
+  async function deleteFiles(id: string) {
+    const yes = await ask(
+      `Delete mod ${id}? This removes it from the active list AND deletes any files ARK has downloaded for it. This cannot be undone.`,
+      { title: "Delete mod files", kind: "warning" },
+    );
+    if (!yes) return;
+    try {
+      await api.modIdDeleteFiles(id);
+      notify("Mod removed and its downloaded files deleted.");
       load();
     } catch (e) {
       notify(String(e), true);
@@ -217,8 +232,8 @@ function CurseForgeIdMods({ notify }: Props) {
       <div className="card">
         <h2>Add a mod</h2>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
-          Search isn't wired up yet — find the mod on CurseForge and copy its numeric project id
-          from the page, then paste it below.
+          Find the mod on CurseForge, copy its numeric project id from the page, and paste it
+          below.
         </p>
         <div className="row">
           <input
@@ -251,8 +266,11 @@ function CurseForgeIdMods({ notify }: Props) {
                 <tr key={id}>
                   <td>{id}</td>
                   <td style={{ textAlign: "right" }}>
-                    <button className="btn danger" onClick={() => remove(id)}>
+                    <button className="btn" onClick={() => remove(id)} style={{ marginRight: 8 }}>
                       Remove
+                    </button>
+                    <button className="btn danger" onClick={() => deleteFiles(id)}>
+                      Delete files
                     </button>
                   </td>
                 </tr>
@@ -263,8 +281,10 @@ function CurseForgeIdMods({ notify }: Props) {
       </div>
 
       <div className="note">
-        Removing a mod here only drops it from the active list — it doesn't delete any files ARK
-        may have already downloaded for it. Restart the server after changes to apply them.
+        <strong>Remove</strong> just drops the mod from the active list — any files ARK already
+        downloaded for it stay on disk, so re-adding it later won't re-download.{" "}
+        <strong>Delete files</strong> does that and also clears its downloaded content to reclaim
+        disk space. Restart the server after changes to apply them.
       </div>
     </>
   );

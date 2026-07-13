@@ -415,6 +415,11 @@ fn mod_id_remove(app: AppHandle, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn mod_id_delete_files(app: AppHandle, id: String) -> Result<(), String> {
+    mods::uninstall_id(&settings::install_dir(&app)?, &id)
+}
+
+#[tauri::command]
 async fn inspect_save(app: AppHandle) -> Result<saves::SaveInfo, String> {
     let dir = settings::install_dir(&app)?;
     tauri::async_runtime::spawn_blocking(move || saves::inspect(&dir))
@@ -511,6 +516,7 @@ pub fn run() {
             mods_id_list,
             mod_id_add,
             mod_id_remove,
+            mod_id_delete_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

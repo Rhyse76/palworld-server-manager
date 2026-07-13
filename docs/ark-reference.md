@@ -167,5 +167,23 @@ Takeaways (from a sampled subset — full set reviewed per-group at build time):
 - ✅ **"Enable RCON" helper** — `config::enable_rcon` (backed by `upsert_section`) sets
   `RCONEnabled=True` + a generated `ServerAdminPassword`, dispatched via `game::live::enable` →
   the `enable_live_control` Tauri command → the Dashboard's capability-aware "Enable RCON" button.
+- ✅ **Mods page unhidden for ARK** (2026-07) — mods are a CurseForge project-id list in
+  `ActiveMods` (`[ServerSettings]`), not drop-in files; `GameSpec.mods_rel: Option<&str>` became a
+  `ModsKind` enum (`LocalFiles`/`CurseForgeIds`/`None`) so mod *mechanism* drives the UI/backend,
+  not just presence. `mods.rs`: `list_ids`/`add_id`/`remove_id` manage the active list (through the
+  existing generic `ConfigField` read/write path — reuses the catalog's insert-on-write for a field
+  that doesn't exist in a fresh ini yet).
+  - **Confirmed mod cache path on a real install**: ARK downloads mod content under
+    `ShooterGame/Binaries/Win64/ShooterGame/Mods/<opaque-session-id>/<mod-id>_<file-id>/` (e.g.
+    `.../Mods/83374/940975_8362419/` — `940975`/`927090` matched the real server's `ActiveMods`
+    exactly). The leading `<opaque-session-id>` folder doesn't need to be understood — `mods.rs`'s
+    `delete_cached_files` just scans one level under `cache_dir_rel` for any subfolder starting
+    with `<mod-id>_` and removes it, so it's robust regardless of what that id represents or
+    whether it changes. `uninstall_id` (Tauri: `mod_id_delete_files`) combines this with
+    `remove_id` for the Mods page's "Delete files" button (vs. plain "Remove", which only drops the
+    id from the active list and leaves cached files in place for a redownload-free re-add).
 - ⏭️ **Remaining (polish, not blocking function):**
   1. Install-progress bar didn't render for the ARK download (minor UI bug to chase).
+- ❌ **CurseForge mod search — decided against (2026-07)**: third-party API access isn't guaranteed
+  (CurseForge tightened this post-Overwolf), so it's not worth building against. `ModsPage.tsx`'s
+  `CurseForgeIdMods` stays manual add-by-numeric-id (find the id on the mod's CurseForge page).

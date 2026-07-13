@@ -110,7 +110,14 @@ pub fn remove(install_dir: &Path, name: &str) -> Result<(), String> {
 
 fn active_ids_key() -> Result<&'static str, String> {
     match game::active().spec().mods {
-        ModsKind::CurseForgeIds { active_key } => Ok(active_key),
+        ModsKind::CurseForgeIds { active_key, .. } => Ok(active_key),
+        _ => Err("This game doesn't use a CurseForge mod id list.".into()),
+    }
+}
+
+fn cache_dir(install_dir: &Path) -> Result<PathBuf, String> {
+    match game::active().spec().mods {
+        ModsKind::CurseForgeIds { cache_dir_rel, .. } => Ok(install_dir.join(cache_dir_rel)),
         _ => Err("This game doesn't use a CurseForge mod id list.".into()),
     }
 }
@@ -154,6 +161,41 @@ pub fn remove_id(install_dir: &Path, id: &str) -> Result<(), String> {
     config::write(install_dir, &fields)
 }
 
+/// Whether a `cache_dir_rel` entry name is this mod id's downloaded content
+/// (`<mod-id>_<file-id>`, e.g. `940975_8362419`).
+fn is_mod_cache_entry(entry_name: &str, id: &str) -> bool {
+    entry_name.strip_prefix(id).and_then(|rest| rest.strip_prefix('_')).is_some()
+}
+
+/// Delete a mod's downloaded content from the CurseForge cache, wherever it landed
+/// under `cache_dir_rel` — the leading folder is an opaque session/list-hash dir we
+/// don't need to understand, so this just scans one level down from it. Does not
+/// touch the active id list; pair with `remove_id` for a full uninstall.
+fn delete_cached_files(install_dir: &Path, id: &str) -> Result<(), String> {
+    let dir = cache_dir(install_dir)?;
+    if !dir.exists() {
+        return Ok(());
+    }
+    for session in fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
+        if !session.path().is_dir() {
+            continue;
+        }
+        for entry in fs::read_dir(session.path()).into_iter().flatten().flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if entry.path().is_dir() && is_mod_cache_entry(&name, id) {
+                let _ = fs::remove_dir_all(entry.path());
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Full removal: drop the id from the active list and delete its cached files.
+pub fn uninstall_id(install_dir: &Path, id: &str) -> Result<(), String> {
+    remove_id(install_dir, id)?;
+    delete_cached_files(install_dir, id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -163,5 +205,16 @@ mod tests {
         assert_eq!(parse_ids(""), Vec::<String>::new());
         assert_eq!(parse_ids("940975"), vec!["940975"]);
         assert_eq!(parse_ids(" 940975 , 927090,,"), vec!["940975", "927090"]);
+    }
+
+    #[test]
+    fn cache_entry_matches_mod_id_by_prefix() {
+        // Real observed shape: "<mod-id>_<file-id>", e.g. 940975_8362419.
+        assert!(is_mod_cache_entry("940975_8362419", "940975"));
+        // Must not match a different id that happens to share a numeric prefix.
+        assert!(!is_mod_cache_entry("9409751_2345", "940975"));
+        assert!(!is_mod_cache_entry("927090_1111", "940975"));
+        // No underscore separator at all.
+        assert!(!is_mod_cache_entry("940975", "940975"));
     }
 }
