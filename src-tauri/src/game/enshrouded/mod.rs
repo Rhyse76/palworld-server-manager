@@ -19,9 +19,9 @@ static SPEC: GameSpec = GameSpec {
     display_name: "Enshrouded",
     steam_app_id: "2278520",
     server_launcher: "enshrouded_server.exe",
-    // Not yet live-started through the app — best guess pending a start/stop test
-    // (Palworld and ARK both shipped a running process name that differed from the
-    // launcher exe name, so this may need correcting).
+    // Confirmed via a live start/stop through the app (2026-07) — matched on the first
+    // try, unlike Palworld/ARK which both shipped a running process name that differed
+    // from the launcher exe.
     process_match: "IMAGENAME eq enshrouded_server.exe",
     process_marker: "enshrouded_server",
     config_rel: "enshrouded_server.json",

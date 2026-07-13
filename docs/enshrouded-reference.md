@@ -10,7 +10,7 @@ aren't reproduced (only field names/structure).
 |---|---|---|
 | `steam_app_id` | `2278520` | confirmed by user |
 | `server_launcher` | `enshrouded_server.exe` (install root, no subfolder) | confirmed (real install layout) |
-| `process_match` / `process_marker` | `IMAGENAME eq enshrouded_server.exe` / `enshrouded_server` | **unverified** — not yet live-started through the app. Palworld and ARK both shipped a *running* process name that differed from the launcher exe (`PalServer-Win64-Shipping-Cmd.exe`, `ArkAscendedServer.exe` behind a different launcher), so this may need correcting after a start/stop test. |
+| `process_match` / `process_marker` | `IMAGENAME eq enshrouded_server.exe` / `enshrouded_server` | confirmed — live start/stop through the app (2026-07) matched on the first try, unlike Palworld/ARK which both shipped a running process name that differed from the launcher exe. |
 | `config_rel` | `enshrouded_server.json` (install root) | confirmed |
 | `saves_rel` | `savegame` (install root; matches the JSON's own `saveDirectory: "./savegame"`) | confirmed |
 | `default_game_port` | `15637` (the JSON's `queryPort`; no separate `port` field in the schema) | confirmed value exists, semantics (game port vs. query port relationship) unverified |
@@ -81,18 +81,24 @@ instead of INI lines.
   `import`) via `serde_json::Value`, patching recognized paths without disturbing
   unmodeled ones. Registered via `game::by_id("enshrouded")`; unit-tested against a
   redacted fixture (placeholder passwords, never the real ones).
-- ✅ **Zero frontend changes needed** — `ConfigPage.tsx` is fully schema-driven off
-  `group`, the "Add profile" game picker (`ProfilesCard.tsx`) is driven generically by
-  `gamesList()`, and `DashboardPage`/Mods-page/Save-tools nav gating already handle
-  `liveControl: "none"` / `modsKind: "none"` (built in anticipation of this adapter).
+- ✅ **Zero frontend changes needed for install/start/stop/config** — `ConfigPage.tsx`
+  is fully schema-driven off `group`, the "Add profile" game picker (`ProfilesCard.tsx`)
+  is driven generically by `gamesList()`. Mods-page/Save-tools nav gating already
+  handled `modsKind: "none"` from the start; Dashboard originally just degraded to a
+  permanent "Not connected" for `liveControl: "none"` games, which read as a dead end
+  once tried against a real Enshrouded profile — nav now hides Dashboard entirely for
+  those games instead (falls back to the Server page).
+- ✅ **LIVE SHAKEDOWN PASSED (2026-07)** — installed, started, and stopped a real
+  Enshrouded server through the app. Process detection worked correctly, confirming the
+  guessed `process_match`/`process_marker` (`enshrouded_server.exe`/`enshrouded_server`)
+  on the first try.
 - ⏭️ **Not yet done:**
-  1. **Live shakedown** — install via the app's SteamCMD flow, start/stop, confirm the
-     real running process name (`process_match`/`process_marker` above are a best
-     guess), and confirm `config::read`/`write` round-trips against the app's own
-     install rather than just the one real file we've seen.
-  2. **`detect.rs`** auto-detection is Palworld-only today (ARK has the same gap) —
+  1. **`detect.rs`** auto-detection is Palworld-only today (ARK has the same gap) —
      Enshrouded installs must be connected by manually setting the install folder for
      now.
-  3. Allowed-value sets for the enum-ish string fields (`tombstoneMode`,
+  2. Allowed-value sets for the enum-ish string fields (`tombstoneMode`,
      `weatherFrequency`, etc.) aren't enumerated — they render as free-text for now
      rather than a dropdown with known options.
+  3. A config **save** hasn't been explicitly verified against the running server yet
+     (start/stop + process detection are confirmed; editing a setting and confirming it
+     round-trips into a live `enshrouded_server.json` is still open).
