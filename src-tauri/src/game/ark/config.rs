@@ -14,7 +14,7 @@
 //! Each field is exposed to the shared model with a composite key
 //! `"<file>|<section>|<key>#<occ>"` so it maps back to the exact source line.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -166,19 +166,52 @@ fn read_file(file_id: &str, path: &Path) -> Vec<ConfigField> {
         .collect()
 }
 
-/// Apply changed values to a file's text in place, preserving everything else.
-/// Only settings whose value actually changed are rewritten.
-fn apply(file_id: &str, text: &str, map: &HashMap<String, String>) -> String {
+/// Apply changed values to a file's text in place, preserving everything else. Fields
+/// whose composite key already exists as a line have only their value rewritten (and
+/// only if it actually changed); fields with no existing line (catalog-only settings
+/// the user has just seen for the first time) are inserted into their section, which
+/// is created if the file doesn't have it yet.
+fn apply(file_id: &str, text: &str, fields: &[ConfigField]) -> String {
     let nl = if text.contains("\r\n") { "\r\n" } else { "\n" };
     let trailing = text.ends_with('\n');
     let (mut lines, entries) = parse(file_id, text);
+
+    let by_key: HashMap<&str, &ConfigField> = fields.iter().map(|f| (f.key.as_str(), f)).collect();
+    let mut matched: HashSet<&str> = HashSet::new();
     for e in &entries {
-        if let Some(new_val) = map.get(&e.composite) {
-            if *new_val != e.value {
-                lines[e.line] = format!("{}={}", e.key, serialize(new_val, &e.kind));
+        if let Some(f) = by_key.get(e.composite.as_str()) {
+            matched.insert(e.composite.as_str());
+            if f.value != e.value {
+                lines[e.line] = format!("{}={}", e.key, serialize(&f.value, &e.kind));
             }
         }
     }
+
+    // New-to-this-file fields, grouped by section so each section's inserts land together.
+    let mut by_section: Vec<(&str, Vec<(&str, String)>)> = Vec::new();
+    for f in fields {
+        if matched.contains(f.key.as_str()) {
+            continue;
+        }
+        let mut parts = f.key.splitn(3, '|');
+        let (Some(fid), Some(section), Some(key_occ)) = (parts.next(), parts.next(), parts.next())
+        else {
+            continue;
+        };
+        if fid != file_id {
+            continue;
+        }
+        let key = key_occ.split('#').next().unwrap_or(key_occ);
+        let value = serialize(&f.value, &f.kind);
+        match by_section.iter_mut().find(|(s, _)| *s == section) {
+            Some((_, changes)) => changes.push((key, value)),
+            None => by_section.push((section, vec![(key, value)])),
+        }
+    }
+    for (section, changes) in &by_section {
+        upsert_section(&mut lines, section, changes);
+    }
+
     let mut out = lines.join(nl);
     if trailing {
         out.push_str(nl);
@@ -186,32 +219,50 @@ fn apply(file_id: &str, text: &str, map: &HashMap<String, String>) -> String {
     out
 }
 
-fn apply_to_file(file_id: &str, path: &Path, map: &HashMap<String, String>) -> Result<(), String> {
+fn apply_to_file(file_id: &str, path: &Path, fields: &[ConfigField]) -> Result<(), String> {
     let text = match fs::read_to_string(path) {
         Ok(t) => t,
         Err(_) => return Ok(()), // file may not exist yet; nothing to update
     };
-    fs::write(path, apply(file_id, &text, map)).map_err(|e| e.to_string())
+    fs::write(path, apply(file_id, &text, fields)).map_err(|e| e.to_string())
 }
 
 // ---- Public API (called by the ARK adapter's Game trait impl) ----
 
+/// Read the full settings list: start from the curated catalog (see `catalog.rs`) so
+/// every well-known setting is shown, then overlay live file values on top — mirrors
+/// Palworld's shipped-defaults overlay, since ARK has no defaults file of its own.
 pub fn read(install_dir: &Path) -> Result<Vec<ConfigField>, String> {
-    let mut fields = read_file("gus", &gus_path(install_dir));
-    fields.extend(read_file("game", &game_path(install_dir)));
-    if fields.is_empty() {
+    let live_gus = read_file("gus", &gus_path(install_dir));
+    let live_game = read_file("game", &game_path(install_dir));
+    if live_gus.is_empty() && live_game.is_empty() {
         return Err("No ARK config found yet. Install the server and run it once to generate it.".into());
+    }
+
+    let mut fields = super::catalog::fields();
+    for lf in live_gus.into_iter().chain(live_game) {
+        merge_field(&mut fields, lf);
     }
     Ok(fields)
 }
 
+/// Overlay a live-parsed field onto the catalog-seeded list: update value/kind if the
+/// key is already known (keeping the catalog's label/group), otherwise append it as a
+/// new field using its own derived label/group — a live setting the catalog doesn't
+/// know about yet.
+fn merge_field(fields: &mut Vec<ConfigField>, live: ConfigField) {
+    match fields.iter_mut().find(|f| f.key == live.key) {
+        Some(existing) => {
+            existing.value = live.value;
+            existing.kind = live.kind;
+        }
+        None => fields.push(live),
+    }
+}
+
 pub fn write(install_dir: &Path, fields: &[ConfigField]) -> Result<(), String> {
-    let map: HashMap<String, String> = fields
-        .iter()
-        .map(|f| (f.key.clone(), f.value.clone()))
-        .collect();
-    apply_to_file("gus", &gus_path(install_dir), &map)?;
-    apply_to_file("game", &game_path(install_dir), &map)?;
+    apply_to_file("gus", &gus_path(install_dir), fields)?;
+    apply_to_file("game", &game_path(install_dir), fields)?;
     Ok(())
 }
 
@@ -294,17 +345,29 @@ pub fn enable_rcon(install_dir: &Path) -> Result<crate::rest::EnableResult, Stri
 }
 
 /// Update or insert keys within `[ServerSettings]`, preserving the rest of the file.
-/// Missing keys are inserted right after the section header; the section is created
-/// if absent.
 fn upsert_server_settings(text: &str, changes: &[(&str, String)]) -> String {
     let nl = if text.contains("\r\n") { "\r\n" } else { "\n" };
     let trailing = text.ends_with('\n');
     let mut lines: Vec<String> = text.lines().map(String::from).collect();
+    upsert_section(&mut lines, "[ServerSettings]", changes);
+    let mut out = lines.join(nl);
+    if trailing {
+        out.push_str(nl);
+    }
+    out
+}
 
-    let hi = match lines.iter().position(|l| l.trim() == "[ServerSettings]") {
+/// Update or insert `changes` within `section`, preserving the rest of the file.
+/// Missing keys are inserted right after the section header; the section is appended
+/// (on its own line, blank-separated from prior content) if it doesn't exist yet.
+fn upsert_section(lines: &mut Vec<String>, section: &str, changes: &[(&str, String)]) {
+    let hi = match lines.iter().position(|l| l.trim() == section) {
         Some(i) => i,
         None => {
-            lines.push("[ServerSettings]".into());
+            if lines.last().map(|l| !l.trim().is_empty()).unwrap_or(false) {
+                lines.push(String::new());
+            }
+            lines.push(section.to_string());
             lines.len() - 1
         }
     };
@@ -326,12 +389,6 @@ fn upsert_server_settings(text: &str, changes: &[(&str, String)]) -> String {
     for (offset, line) in to_insert.into_iter().enumerate() {
         lines.insert(hi + 1 + offset, line);
     }
-
-    let mut out = lines.join(nl);
-    if trailing {
-        out.push_str(nl);
-    }
-    out
 }
 
 /// Small non-cryptographic password for local admin convenience.
@@ -454,12 +511,17 @@ ConfigOverrideItemMaxQuantity=(B)\n";
         assert!(out.find("RCONEnabled").unwrap() < out.find("[SessionSettings]").unwrap());
     }
 
+    fn field(key: &str, value: &str, kind: &str) -> ConfigField {
+        ConfigField { key: key.into(), value: value.into(), kind: kind.into(), ..Default::default() }
+    }
+
     #[test]
     fn write_edits_in_place_and_preserves_the_rest() {
-        let mut map = HashMap::new();
-        map.insert("gus|[ServerSettings]|XPMultiplier#0".to_string(), "10".to_string());
-        map.insert("gus|[ServerSettings]|ExclusiveJoin#0".to_string(), "false".to_string());
-        let out = apply("gus", GUS, &map);
+        let fields = vec![
+            field("gus|[ServerSettings]|XPMultiplier#0", "10", "int"),
+            field("gus|[ServerSettings]|ExclusiveJoin#0", "false", "bool"),
+        ];
+        let out = apply("gus", GUS, &fields);
 
         assert!(out.contains("XPMultiplier=10")); // changed
         assert!(out.contains("ExclusiveJoin=False")); // bool re-serialized
@@ -467,9 +529,54 @@ ConfigOverrideItemMaxQuantity=(B)\n";
         assert!(out.contains("DifficultyOffset=1.00")); // untouched value keeps exact text
         assert!(out.contains("AdminListURL=\"file://C:/ARK/allowed.txt\"")); // quotes preserved
         assert!(out.contains("[SessionSettings]")); // section preserved
+
         // Unchanged fields (same value supplied) must not alter their line.
-        let mut same = HashMap::new();
-        same.insert("gus|[ServerSettings]|DifficultyOffset#0".to_string(), "1.00".to_string());
+        let same = vec![field("gus|[ServerSettings]|DifficultyOffset#0", "1.00", "float")];
         assert!(apply("gus", GUS, &same).contains("DifficultyOffset=1.00"));
+    }
+
+    #[test]
+    fn write_inserts_catalog_only_fields_into_their_existing_section() {
+        // No line for this key in GUS yet (as if seeded by the catalog and edited by
+        // the user) — it must be inserted into [ServerSettings], not dropped.
+        let fields = vec![field("gus|[ServerSettings]|MaxTamedDinos#0", "6000", "int")];
+        let out = apply("gus", GUS, &fields);
+        assert!(out.contains("MaxTamedDinos=6000"));
+        assert!(out.find("MaxTamedDinos").unwrap() < out.find("[SessionSettings]").unwrap());
+    }
+
+    #[test]
+    fn write_inserts_a_missing_section_when_needed() {
+        let fields = vec![field(
+            "game|[/Script/ShooterGame.ShooterGameMode]|MaxTribeLogs#0",
+            "800",
+            "int",
+        )];
+        let out = apply("game", "", &fields);
+        assert!(out.contains("[/Script/ShooterGame.ShooterGameMode]"));
+        assert!(out.contains("MaxTribeLogs=800"));
+    }
+
+    #[test]
+    fn merge_field_overlays_catalog_and_appends_live_only_keys() {
+        let mut fields = vec![ConfigField {
+            group: "Rates & Multipliers".into(),
+            ..field("gus|[ServerSettings]|XPMultiplier#0", "1.0", "float")
+        }];
+
+        merge_field(&mut fields, field("gus|[ServerSettings]|XPMultiplier#0", "3.0", "float"));
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0].value, "3.0");
+        assert_eq!(fields[0].group, "Rates & Multipliers"); // catalog group preserved
+
+        merge_field(
+            &mut fields,
+            ConfigField {
+                group: "Session".into(),
+                ..field("gus|[SessionSettings]|SessionName#0", "Rhyse Island", "string")
+            },
+        );
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[1].group, "Session");
     }
 }

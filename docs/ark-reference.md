@@ -154,10 +154,18 @@ Takeaways (from a sampled subset — full set reviewed per-group at build time):
   ARK adapter works end-to-end against a real server.**
   - RCON gotcha found + fixed live: ASA ignores empty commands, so our old empty-command "sentinel"
     hung; `rcon::exec` now reads the first packet then drains with a short timeout.
+- ✅ **ARK settings catalog** (2026-07) — `src-tauri/src/game/ark/catalog.rs` curates ~120 well-known
+  `GameUserSettings.ini [ServerSettings]`/`Game.ini` keys (rates & multipliers, difficulty/PvP,
+  player/tribe, dinos & taming, structures, access & whitelist, session/engine/MOTD, gameplay rules),
+  each with a shipped-engine default, grouped for Config-page tabs. `config::read` seeds the field
+  list from the catalog then overlays live file values on top (mirrors Palworld's defaults overlay).
+  `config::apply`/`write` generalized: fields with no existing line yet (catalog-only settings the
+  user edits) are inserted into their section via `upsert_section` (also now backs `enable_rcon`'s
+  `[ServerSettings]` insert), creating the section if the file doesn't have it. Dynamic array
+  settings (per-level stat overrides, item overrides) are intentionally NOT catalogued — they only
+  show up if already present in the live file.
+- ✅ **"Enable RCON" helper** — `config::enable_rcon` (backed by `upsert_section`) sets
+  `RCONEnabled=True` + a generated `ServerAdminPassword`, dispatched via `game::live::enable` →
+  the `enable_live_control` Tauri command → the Dashboard's capability-aware "Enable RCON" button.
 - ⏭️ **Remaining (polish, not blocking function):**
-  1. **ARK settings catalog** — a fresh install's `GameUserSettings.ini` only has ~46 keys (ARK writes
-     no defaults file). Build a curated catalog of known ARK settings (types/defaults/groups) merged
-     with the live file so the Config page shows the full set, like the reference manager.
-  2. **"Enable RCON" helper** — add `RCONEnabled=True` + a generated `ServerAdminPassword` to the ini
-     from the UI (mirrors Palworld's "Enable REST API"); needs an add-key-to-section config write.
-  3. Install-progress bar didn't render for the ARK download (minor UI bug to chase).
+  1. Install-progress bar didn't render for the ARK download (minor UI bug to chase).

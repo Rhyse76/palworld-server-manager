@@ -8,6 +8,7 @@ use crate::config::ConfigField;
 
 use super::{Game, GameSpec, LiveControl};
 
+mod catalog;
 pub(super) mod config;
 pub mod live;
 
