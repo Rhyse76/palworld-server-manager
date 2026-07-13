@@ -6,7 +6,7 @@ use std::path::Path;
 
 use crate::config::ConfigField;
 
-use super::{Game, GameSpec, LiveControl};
+use super::{Game, GameSpec, LiveControl, ModsKind};
 
 mod config;
 
@@ -22,7 +22,7 @@ static SPEC: GameSpec = GameSpec {
     config_rel: "Pal/Saved/Config/WindowsServer/PalWorldSettings.ini",
     default_config: Some("DefaultPalWorldSettings.ini"),
     saves_rel: "Pal/Saved/SaveGames",
-    mods_rel: Some("Pal/Content/Paks/~mods"),
+    mods: ModsKind::LocalFiles("Pal/Content/Paks/~mods"),
     default_game_port: 8211,
     live_control: LiveControl::RestApi,
 };

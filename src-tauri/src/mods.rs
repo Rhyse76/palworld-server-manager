@@ -1,15 +1,21 @@
-//! Manage Palworld `.pak` mods in `Pal/Content/Paks/~mods/`.
+//! Manage mods for the active game.
 //!
-//! Enabling/disabling is done by renaming `.pak` ⇄ `.pak.disabled` (Unreal only
-//! loads `.pak`). We manage the files; whether a given mod works on a dedicated
-//! server is up to the mod itself.
+//! Two shapes, per `game::ModsKind`:
+//!   * **Local files** (Palworld `.pak` in `Pal/Content/Paks/~mods/`) — we own the
+//!     files; enabling/disabling renames `.pak` ⇄ `.pak.disabled` (Unreal only loads
+//!     `.pak`). Whether a given mod works on a dedicated server is up to the mod.
+//!   * **CurseForge id list** (ARK: SA's `ActiveMods`) — we only manage which
+//!     numeric project ids are active, stored as one comma-separated config field;
+//!     the game's own launcher downloads/updates the actual mod content from that
+//!     list on next start (`-mods=`/`-allowcfcore`).
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use crate::game;
+use crate::config;
+use crate::game::{self, ModsKind};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,12 +26,12 @@ pub struct ModInfo {
     pub size_bytes: u64,
 }
 
-pub fn mods_dir(install_dir: &Path) -> PathBuf {
-    // Games without a mods dir advertise `mods_rel: None`; the UI hides the Mods
-    // page for them, so this sentinel path simply never exists / lists nothing.
-    match game::active().spec().mods_rel {
-        Some(rel) => install_dir.join(rel),
-        None => install_dir.join(".no-mods"),
+fn mods_dir(install_dir: &Path) -> PathBuf {
+    // Games not in LocalFiles mode never call these functions (the UI branches on
+    // `modsKind`), so this sentinel path simply never exists / lists nothing.
+    match game::active().spec().mods {
+        ModsKind::LocalFiles(rel) => install_dir.join(rel),
+        _ => install_dir.join(".no-mods"),
     }
 }
 
@@ -98,4 +104,64 @@ pub fn remove(install_dir: &Path, name: &str) -> Result<(), String> {
     let _ = fs::remove_file(dir.join(name));
     let _ = fs::remove_file(dir.join(format!("{name}.disabled")));
     Ok(())
+}
+
+// ---- CurseForge id-list mode (e.g. ARK: SA's ActiveMods) ----
+
+fn active_ids_key() -> Result<&'static str, String> {
+    match game::active().spec().mods {
+        ModsKind::CurseForgeIds { active_key } => Ok(active_key),
+        _ => Err("This game doesn't use a CurseForge mod id list.".into()),
+    }
+}
+
+fn parse_ids(raw: &str) -> Vec<String> {
+    raw.split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect()
+}
+
+pub fn list_ids(install_dir: &Path) -> Result<Vec<String>, String> {
+    let key = active_ids_key()?;
+    let fields = config::read(install_dir)?;
+    Ok(parse_ids(&config::find(&fields, key).unwrap_or_default()))
+}
+
+pub fn add_id(install_dir: &Path, id: &str) -> Result<(), String> {
+    let id = id.trim();
+    if id.is_empty() || !id.chars().all(|c| c.is_ascii_digit()) {
+        return Err("Mod id must be numeric — copy it from the mod's CurseForge project page.".into());
+    }
+    let key = active_ids_key()?;
+    let mut fields = config::read(install_dir)?;
+    let mut ids = parse_ids(&config::find(&fields, key).unwrap_or_default());
+    if ids.iter().any(|i| i == id) {
+        return Ok(()); // already active
+    }
+    ids.push(id.to_string());
+    config::upsert(&mut fields, key, &ids.join(","), "string");
+    config::write(install_dir, &fields)
+}
+
+pub fn remove_id(install_dir: &Path, id: &str) -> Result<(), String> {
+    let key = active_ids_key()?;
+    let mut fields = config::read(install_dir)?;
+    let mut ids = parse_ids(&config::find(&fields, key).unwrap_or_default());
+    let before = ids.len();
+    ids.retain(|i| i != id);
+    if ids.len() == before {
+        return Ok(()); // wasn't active
+    }
+    config::upsert(&mut fields, key, &ids.join(","), "string");
+    config::write(install_dir, &fields)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_ids_trims_and_drops_empties() {
+        assert_eq!(parse_ids(""), Vec::<String>::new());
+        assert_eq!(parse_ids("940975"), vec!["940975"]);
+        assert_eq!(parse_ids(" 940975 , 927090,,"), vec!["940975", "927090"]);
+    }
 }

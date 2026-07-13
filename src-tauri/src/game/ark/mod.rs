@@ -6,7 +6,7 @@ use std::path::Path;
 
 use crate::config::ConfigField;
 
-use super::{Game, GameSpec, LiveControl};
+use super::{Game, GameSpec, LiveControl, ModsKind};
 
 mod catalog;
 pub(super) mod config;
@@ -24,7 +24,9 @@ static SPEC: GameSpec = GameSpec {
     config_rel: "ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini",
     default_config: None, // ARK ships no defaults file; the game generates the ini
     saves_rel: "ShooterGame/Saved/SavedArks",
-    mods_rel: None, // mods are a launch-arg CurseForge list, not a drop-in folder
+    // ActiveMods is a comma-separated CurseForge project-id list in [ServerSettings];
+    // ARK downloads/updates the mod content itself from the ids via `-mods=`/`-allowcfcore`.
+    mods: ModsKind::CurseForgeIds { active_key: "gus|[ServerSettings]|ActiveMods#0" },
     default_game_port: 7777,
     live_control: LiveControl::Rcon,
 };

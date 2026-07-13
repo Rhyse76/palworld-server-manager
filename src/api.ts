@@ -13,7 +13,9 @@ export interface GameInfo {
   displayName: string;
   /** Base name of the config file, e.g. "PalWorldSettings.ini". */
   configFile: string;
-  hasMods: boolean;
+  /** "local-files" = drop-in mod files (Palworld); "curseforge-ids" = an id list
+   * the server downloads/updates itself (ARK: SA); "none" = no mod support. */
+  modsKind: "local-files" | "curseforge-ids" | "none";
   liveControl: "rest" | "rcon" | "none";
 }
 
@@ -183,12 +185,17 @@ export const api = {
   // Activity log
   readActivityLog: () => invoke<string>("read_activity_log"),
 
-  // Mods
+  // Mods (local files — Palworld)
   modsList: () => invoke<ModInfo[]>("mods_list"),
   modSetEnabled: (name: string, enabled: boolean) =>
     invoke<void>("mod_set_enabled", { name, enabled }),
   modInstall: (path: string) => invoke<string>("mod_install", { path }),
   modRemove: (name: string) => invoke<void>("mod_remove", { name }),
+
+  // Mods (CurseForge id list — ARK: SA)
+  modIdsList: () => invoke<string[]>("mods_id_list"),
+  modIdAdd: (id: string) => invoke<void>("mod_id_add", { id }),
+  modIdRemove: (id: string) => invoke<void>("mod_id_remove", { id }),
 
   // Saves (M4)
   inspectSave: () => invoke<SaveInfo>("inspect_save"),

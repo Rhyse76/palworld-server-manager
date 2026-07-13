@@ -54,7 +54,7 @@ struct GameInfo {
     id: String,
     display_name: String,
     config_file: String,
-    has_mods: bool,
+    mods_kind: String,
     live_control: String,
 }
 
@@ -67,7 +67,12 @@ fn spec_to_info(s: &game::GameSpec) -> GameInfo {
         id: s.id.to_string(),
         display_name: s.display_name.to_string(),
         config_file,
-        has_mods: s.mods_rel.is_some(),
+        mods_kind: match s.mods {
+            game::ModsKind::LocalFiles(_) => "local-files",
+            game::ModsKind::CurseForgeIds { .. } => "curseforge-ids",
+            game::ModsKind::None => "none",
+        }
+        .to_string(),
         live_control: match s.live_control {
             game::LiveControl::RestApi => "rest",
             game::LiveControl::Rcon => "rcon",
@@ -395,6 +400,21 @@ fn mod_remove(app: AppHandle, name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn mods_id_list(app: AppHandle) -> Result<Vec<String>, String> {
+    mods::list_ids(&settings::install_dir(&app)?)
+}
+
+#[tauri::command]
+fn mod_id_add(app: AppHandle, id: String) -> Result<(), String> {
+    mods::add_id(&settings::install_dir(&app)?, &id)
+}
+
+#[tauri::command]
+fn mod_id_remove(app: AppHandle, id: String) -> Result<(), String> {
+    mods::remove_id(&settings::install_dir(&app)?, &id)
+}
+
+#[tauri::command]
 async fn inspect_save(app: AppHandle) -> Result<saves::SaveInfo, String> {
     let dir = settings::install_dir(&app)?;
     tauri::async_runtime::spawn_blocking(move || saves::inspect(&dir))
@@ -488,6 +508,9 @@ pub fn run() {
             mod_set_enabled,
             mod_install,
             mod_remove,
+            mods_id_list,
+            mod_id_add,
+            mod_id_remove,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

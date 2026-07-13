@@ -33,6 +33,22 @@ pub enum LiveControl {
     None,
 }
 
+/// How a game exposes user-installable mods.
+// `None` isn't constructed until the Enshrouded adapter lands.
+#[allow(dead_code)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ModsKind {
+    /// Drop-in files in an install-relative directory (Palworld `.pak`).
+    LocalFiles(&'static str),
+    /// A comma-separated CurseForge project-id list stored in one config field
+    /// (its composite `ConfigField` key), e.g. ARK: SA's `ActiveMods`. The game's own
+    /// launcher downloads/updates the mod content itself from the id list — we only
+    /// manage which ids are active, not the mod files.
+    CurseForgeIds { active_key: &'static str },
+    /// No mod support (Enshrouded, for now).
+    None,
+}
+
 /// Static, compile-time metadata describing a game's dedicated server.
 pub struct GameSpec {
     /// Stable slug, e.g. `"palworld"`.
@@ -54,8 +70,8 @@ pub struct GameSpec {
     pub default_config: Option<&'static str>,
     /// Install-relative path to the world/save directory.
     pub saves_rel: &'static str,
-    /// Install-relative mods directory, if the game supports drop-in mods.
-    pub mods_rel: Option<&'static str>,
+    /// How this game supports mods (drop-in files, a CurseForge id list, or none).
+    pub mods: ModsKind,
     /// Default game port when config doesn't specify one.
     pub default_game_port: u16,
     /// Live-control capability.

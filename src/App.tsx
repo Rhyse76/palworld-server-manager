@@ -56,12 +56,12 @@ export default function App() {
     api.gamesList().then(setGames).catch(() => {});
   }, []);
 
-  // If the active game hides the current page (e.g. switching to ARK while on
+  // If the active game hides the current page (e.g. switching to Enshrouded while on
   // Mods/Save tools), fall back to the Server page.
   useEffect(() => {
     const gameId = config?.profiles.find((p) => p.id === config.activeProfile)?.game ?? "palworld";
     const g = games.find((x) => x.id === gameId);
-    if ((page === "mods" && g?.hasMods === false) || (page === "saves" && gameId !== "palworld")) {
+    if ((page === "mods" && g?.modsKind === "none") || (page === "saves" && gameId !== "palworld")) {
       setPage("server");
     }
   }, [config, games, page]);
@@ -123,10 +123,10 @@ export default function App() {
   const activeGameId = activeProfileObj?.game ?? "palworld";
   const activeGameName = activeGame?.displayName ?? "Palworld";
 
-  // Hide pages that don't apply to the active game: Mods (games without a drop-in
-  // mods folder, e.g. ARK) and Save tools (Palworld's GVAS format only).
+  // Hide pages that don't apply to the active game: Mods (games with no mod support
+  // at all, e.g. Enshrouded) and Save tools (Palworld's GVAS format only).
   const visibleNav = NAV.filter((n) => {
-    if (n.id === "mods") return activeGame?.hasMods !== false;
+    if (n.id === "mods") return activeGame?.modsKind !== "none";
     if (n.id === "saves") return activeGameId === "palworld";
     return true;
   });
