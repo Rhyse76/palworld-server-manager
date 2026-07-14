@@ -21,6 +21,11 @@ pub struct ServerProfile {
     /// so existing configs (written before multi-game) load unchanged.
     #[serde(default = "default_game")]
     pub game: String,
+    /// Extra command-line arguments appended after the game's own auto-generated
+    /// launch args (e.g. ARK's map/port/RCON flags), space-separated. Free text —
+    /// this app doesn't validate or interpret them.
+    #[serde(default)]
+    pub extra_launch_args: String,
 }
 
 fn default_game() -> String {
@@ -157,6 +162,7 @@ pub fn load(app: &AppHandle) -> AppConfig {
             name: "Default".into(),
             install_dir: dir,
             game: default_game(),
+            extra_launch_args: String::new(),
         });
         changed = true;
     }
@@ -250,6 +256,7 @@ pub fn add_profile(app: &AppHandle, name: &str, install_dir: &str, game: &str) -
         name: if name.trim().is_empty() { "Server".into() } else { name.trim().to_string() },
         install_dir: install_dir.to_string(),
         game,
+        extra_launch_args: String::new(),
     });
     cfg.active_profile = Some(id.clone());
     save(app, &cfg)?;
@@ -275,6 +282,17 @@ pub fn set_profile_dir(app: &AppHandle, id: &str, install_dir: &str) -> Result<(
         .find(|p| p.id == id)
         .ok_or("Profile not found.")?;
     p.install_dir = install_dir.to_string();
+    save(app, &cfg)
+}
+
+pub fn set_launch_args(app: &AppHandle, id: &str, args: &str) -> Result<(), String> {
+    let mut cfg = load(app);
+    let p = cfg
+        .profiles
+        .iter_mut()
+        .find(|p| p.id == id)
+        .ok_or("Profile not found.")?;
+    p.extra_launch_args = args.trim().to_string();
     save(app, &cfg)
 }
 

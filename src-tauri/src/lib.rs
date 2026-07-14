@@ -123,7 +123,8 @@ async fn install_server(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn start_server(app: AppHandle) -> Result<(), String> {
     let install_dir = settings::install_dir(&app)?;
-    server::start(&install_dir, settings::hide_console(&app))?;
+    let extra_args = settings::active_profile(&app).map(|p| p.extra_launch_args).unwrap_or_default();
+    server::start(&install_dir, settings::hide_console(&app), &extra_args)?;
     automation::set_supervise(&app, true);
     logs::record(&app, "Server started.");
     discord::notify(&app, discord::Event::ServerStarted);
@@ -147,7 +148,8 @@ fn restart_server(app: AppHandle) -> Result<(), String> {
     let install_dir = settings::install_dir(&app)?;
     // If it's not running, a "restart" is just a start.
     if !server::is_running() {
-        server::start(&install_dir, settings::hide_console(&app))?;
+        let extra_args = settings::active_profile(&app).map(|p| p.extra_launch_args).unwrap_or_default();
+        server::start(&install_dir, settings::hide_console(&app), &extra_args)?;
         automation::set_supervise(&app, true);
         logs::record(&app, "Server started.");
         discord::notify(&app, discord::Event::ServerStarted);
@@ -428,6 +430,11 @@ fn mod_id_delete_files(app: AppHandle, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_launch_args(app: AppHandle, id: String, args: String) -> Result<(), String> {
+    settings::set_launch_args(&app, &id, &args)
+}
+
+#[tauri::command]
 fn set_curseforge_key(app: AppHandle, key: String) -> Result<(), String> {
     settings::set_curseforge_key(&app, key)
 }
@@ -539,6 +546,7 @@ pub fn run() {
             mod_id_delete_files,
             set_curseforge_key,
             curseforge_search,
+            set_launch_args,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

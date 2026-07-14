@@ -25,6 +25,8 @@ export interface ServerProfile {
   installDir: string;
   /** Game id this profile manages (e.g. "palworld", "ark-sa"). */
   game: string;
+  /** Freeform extra command-line args, appended after the game's own auto-generated ones. */
+  extraLaunchArgs: string;
 }
 
 export interface Automation {
@@ -82,6 +84,8 @@ export interface ConfigField {
   label?: string;
   /** Group/section heading; empty renders ungrouped. */
   group?: string;
+  /** Known-good values for an "enum" field, rendered as a dropdown. Empty = free text. */
+  options?: string[];
 }
 
 export interface DetectedInstall {
@@ -174,6 +178,7 @@ export const api = {
   setActiveProfile: (id: string) => invoke<void>("set_active_profile", { id }),
   renameProfile: (id: string, name: string) => invoke<void>("rename_profile", { id, name }),
   deleteProfile: (id: string) => invoke<void>("delete_profile", { id }),
+  setLaunchArgs: (id: string, args: string) => invoke<void>("set_launch_args", { id, args }),
 
   // Automation
   setAutomation: (automation: Automation) => invoke<void>("set_automation", { automation }),

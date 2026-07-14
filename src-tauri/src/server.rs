@@ -40,8 +40,10 @@ pub fn is_running() -> bool {
 /// gets its own visible console (the stable, standard method — equivalent to
 /// double-clicking the launcher). With `hide_console`, it runs with a console
 /// but no visible window (`CREATE_NO_WINDOW`), which still gives the console
-/// build the real console handle it needs to avoid crashing.
-pub fn start(install_dir: &Path, hide_console: bool) -> Result<(), String> {
+/// build the real console handle it needs to avoid crashing. `extra_args` is the
+/// user's freeform "Extra launch arguments" from the profile, appended after the
+/// game's own auto-generated args — split on whitespace (no quoting support).
+pub fn start(install_dir: &Path, hide_console: bool, extra_args: &str) -> Result<(), String> {
     let exe = palserver_exe(install_dir);
     if !exe.exists() {
         return Err("Server is not installed yet.".into());
@@ -53,6 +55,7 @@ pub fn start(install_dir: &Path, hide_console: bool) -> Result<(), String> {
     let mut command = Command::new(&exe);
     command.current_dir(install_dir);
     command.args(game::active().launch_args(install_dir)); // empty for Palworld
+    command.args(extra_args.split_whitespace());
     if hide_console {
         command.hidden();
     } else {

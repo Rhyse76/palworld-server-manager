@@ -67,12 +67,18 @@ fn friendly_section(section: &str) -> String {
 }
 
 fn to_field(e: Entry) -> ConfigField {
+    let is_map = e.key == "MapSelection";
     ConfigField {
-        label: e.key,
+        label: if is_map { "Map".to_string() } else { e.key },
         group: friendly_section(&e.section),
         key: e.composite,
         value: e.value,
         kind: e.kind,
+        options: if is_map {
+            super::catalog::MAP_OPTIONS.iter().map(|s| s.to_string()).collect()
+        } else {
+            Vec::new()
+        },
     }
 }
 

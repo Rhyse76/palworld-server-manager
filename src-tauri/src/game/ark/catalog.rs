@@ -17,7 +17,29 @@ use crate::config::ConfigField;
 /// `(file_id, section, key, kind, default, group)`.
 type Entry = (&'static str, &'static str, &'static str, &'static str, &'static str, &'static str);
 
+/// Known ASA map launch codes, confirmed against Steam's DLC listing for app 2399830
+/// (ARK: Survival Ascended) plus the community wiki's server-config page — not
+/// guessed. Maps released after this was written won't be missing entirely (the
+/// field falls back to free text if a live value isn't in this list), just absent
+/// from the dropdown until added here.
+pub const MAP_OPTIONS: &[&str] = &[
+    "TheIsland_WP",
+    "TheCenter_WP",
+    "ScorchedEarth_WP",
+    "Ragnarok_WP",
+    "Aberration_WP",
+    "Extinction_WP",
+    "Valguero_WP",
+    "Genesis_WP",
+    "Astraeos_WP",
+    "LostColony_WP",
+    "BobsMissions_WP",
+];
+
 const ENTRIES: &[Entry] = &[
+    // ---- Map ----
+    ("gus", "[ServerSettings]", "MapSelection", "enum", "TheIsland_WP", "Map"),
+
     // ---- Rates & Multipliers (GameUserSettings.ini [ServerSettings]) ----
     ("gus", "[ServerSettings]", "XPMultiplier", "float", "1.0", "Rates & Multipliers"),
     ("gus", "[ServerSettings]", "TamingSpeedMultiplier", "float", "1.0", "Rates & Multipliers"),
@@ -171,8 +193,13 @@ pub fn fields() -> Vec<ConfigField> {
             key: format!("{file}|{section}|{key}#0"),
             value: default.to_string(),
             kind: kind.to_string(),
-            label: String::new(),
+            label: if key == "MapSelection" { "Map".to_string() } else { String::new() },
             group: group.to_string(),
+            options: if key == "MapSelection" {
+                MAP_OPTIONS.iter().map(|s| s.to_string()).collect()
+            } else {
+                Vec::new()
+            },
         })
         .collect()
 }

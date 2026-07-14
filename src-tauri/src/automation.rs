@@ -166,7 +166,8 @@ fn tick(app: &AppHandle) {
             logs::record(app, "Server stopped unexpectedly — auto-restarting…");
             discord::notify(app, discord::Event::Crashed);
             if let Ok(dir) = settings::install_dir(app) {
-                match server::start(&dir, cfg.hide_server_console) {
+                let extra_args = settings::active_profile(app).map(|p| p.extra_launch_args).unwrap_or_default();
+                match server::start(&dir, cfg.hide_server_console, &extra_args) {
                     Ok(()) => logs::record(app, "Crash watchdog: server restarted."),
                     Err(e) => logs::record(app, &format!("Crash watchdog: restart failed: {e}")),
                 }
@@ -233,7 +234,8 @@ pub fn run_restart(app: &AppHandle, hide_console: bool, countdown: i64, label: &
     let _ = server::stop(); // force-stop as a safety net / primary when REST is off
     std::thread::sleep(Duration::from_secs(2));
 
-    match server::start(&dir, hide_console) {
+    let extra_args = settings::active_profile(app).map(|p| p.extra_launch_args).unwrap_or_default();
+    match server::start(&dir, hide_console, &extra_args) {
         Ok(()) => logs::record(app, &format!("{label}: server started.")),
         Err(e) => logs::record(app, &format!("{label}: failed to start: {e}")),
     }

@@ -92,7 +92,14 @@ const GROUP_BOOL_FIELDS: &[&str] =
     &["canKickBan", "canAccessInventories", "canEditWorld", "canEditBase", "canExtendBase"];
 
 fn field(key: String, value: String, kind: &str, group: &str, label: &str) -> ConfigField {
-    ConfigField { key, value, kind: kind.to_string(), label: label.to_string(), group: group.to_string() }
+    ConfigField {
+        key,
+        value,
+        kind: kind.to_string(),
+        label: label.to_string(),
+        group: group.to_string(),
+        options: Vec::new(),
+    }
 }
 
 fn value_to_string(v: &Value, kind: &str) -> String {

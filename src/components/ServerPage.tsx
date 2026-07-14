@@ -17,6 +17,19 @@ interface Props {
   gameName: string;
 }
 
+/** Well-documented flags only — kept short and per-game so nothing is guessed. */
+const COMMON_FLAGS: Record<string, { flag: string; desc: string }[]> = {
+  palworld: [
+    { flag: "-useperfthreads", desc: "Improves CPU performance (Windows)." },
+    { flag: "-NoAsyncLoadingThread", desc: "Loads assets synchronously — official perf tip." },
+    { flag: "-UseMultithreadForDS", desc: "Enables multithreading for the dedicated server." },
+  ],
+  "ark-sa": [
+    { flag: "-NoBattlEye", desc: "Disables BattlEye anti-cheat." },
+    { flag: "-servergamelog", desc: "Turns on extra server-side game logging." },
+  ],
+};
+
 /// Map an install-log line to a friendly current-phase label, so the UI clearly
 /// shows work is happening even before SteamCMD reports a numeric percentage.
 function derivePhase(line: string): string | null {
@@ -136,6 +149,37 @@ export default function ServerPage({ status, config, refresh, notify, gameName }
 
   const installed = status?.installed ?? false;
   const running = status?.running ?? false;
+
+  const activeProfile = config?.profiles.find((p) => p.id === config.activeProfile) ?? null;
+  const [launchArgs, setLaunchArgsState] = useState("");
+  const [savingArgs, setSavingArgs] = useState(false);
+
+  useEffect(() => {
+    setLaunchArgsState(activeProfile?.extraLaunchArgs ?? "");
+  }, [activeProfile?.id, activeProfile?.extraLaunchArgs]);
+
+  function toggleFlag(flag: string) {
+    const tokens = launchArgs.split(/\s+/).filter(Boolean);
+    const has = tokens.includes(flag);
+    setLaunchArgsState(has ? tokens.filter((t) => t !== flag).join(" ") : [...tokens, flag].join(" "));
+  }
+
+  async function saveLaunchArgs() {
+    if (!activeProfile) return;
+    setSavingArgs(true);
+    try {
+      await api.setLaunchArgs(activeProfile.id, launchArgs);
+      notify("Launch arguments saved. Restart the server to apply.");
+      refresh();
+    } catch (e) {
+      notify(String(e), true);
+    } finally {
+      setSavingArgs(false);
+    }
+  }
+
+  const activeTokens = launchArgs.split(/\s+/).filter(Boolean);
+  const flags = activeProfile ? COMMON_FLAGS[activeProfile.game] ?? [] : [];
 
   return (
     <>
@@ -277,6 +321,43 @@ export default function ServerPage({ status, config, refresh, notify, gameName }
           Restart gracefully saves the world and warns players (needs live control — the REST
           API or RCON — enabled); without it, it force-restarts.
         </p>
+      </div>
+
+      <div className="card">
+        <h2>Launch arguments</h2>
+        <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
+          Extra command-line flags appended after the app's own launch args. Takes effect on the
+          next server start.
+        </p>
+        {flags.length > 0 && (
+          <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            {flags.map((f) => {
+              const on = activeTokens.includes(f.flag);
+              return (
+                <button
+                  key={f.flag}
+                  className={`btn ${on ? "primary" : ""}`}
+                  title={f.desc}
+                  onClick={() => toggleFlag(f.flag)}
+                >
+                  {f.flag}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div className="row">
+          <input
+            type="text"
+            placeholder="e.g. -useperfthreads -NoAsyncLoadingThread"
+            value={launchArgs}
+            onChange={(e) => setLaunchArgsState(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <button className="btn primary" onClick={saveLaunchArgs} disabled={savingArgs || !activeProfile}>
+            {savingArgs ? "Saving…" : "Save"}
+          </button>
+        </div>
       </div>
 
       <div className="card">

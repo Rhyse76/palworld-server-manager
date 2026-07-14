@@ -28,6 +28,10 @@ pub struct ConfigField {
     /// Group/section heading for the UI; empty renders ungrouped.
     #[serde(default)]
     pub group: String,
+    /// Known-good values for an `enum` field, rendered as a dropdown instead of a
+    /// text box. Empty means no curated list is known — falls back to free text.
+    #[serde(default)]
+    pub options: Vec<String>,
 }
 
 /// Find a field's logical value by key.

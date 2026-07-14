@@ -99,7 +99,8 @@ pub fn apply(app: &AppHandle) -> Result<(), String> {
 
     if was_running {
         let hide = settings::load(app).hide_server_console;
-        server::start(&dir, hide)?;
+        let extra_args = settings::active_profile(app).map(|p| p.extra_launch_args).unwrap_or_default();
+        server::start(&dir, hide, &extra_args)?;
     }
     Ok(())
 }

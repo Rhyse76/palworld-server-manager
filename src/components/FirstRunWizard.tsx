@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { api, onInstallLog, onInstallProgress, type GameInfo, type StatusInfo } from "../api";
 
 interface Props {
@@ -98,6 +99,18 @@ export default function FirstRunWizard({
       notify(String(e), true);
     } finally {
       setSwitching(false);
+    }
+  }
+
+  async function changeFolder() {
+    const picked = await open({ directory: true, title: "Choose a folder for the server" });
+    if (typeof picked !== "string") return;
+    try {
+      await api.setInstallDir(picked);
+      notify("Install location updated.");
+      refresh();
+    } catch (e) {
+      notify(String(e), true);
     }
   }
 
@@ -206,6 +219,14 @@ export default function FirstRunWizard({
                     </button>
                   ))}
                 </div>
+                {status?.installDir && (
+                  <div style={{ marginTop: 14, fontSize: 13 }}>
+                    Install location: <code>{status.installDir}</code>{" "}
+                    <button className="btn" onClick={changeFolder} disabled={switching} style={{ marginLeft: 8 }}>
+                      Change folder…
+                    </button>
+                  </div>
+                )}
               </>
             ),
           },

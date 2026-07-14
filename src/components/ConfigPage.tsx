@@ -277,6 +277,17 @@ function Field({ field, onChange }: { field: ConfigField; onChange: (v: string) 
           value={field.value}
           onChange={(e) => onChange(e.target.value)}
         />
+      ) : field.kind === "enum" && field.options && field.options.length > 0 ? (
+        <select value={field.value} onChange={(e) => onChange(e.target.value)}>
+          {!field.options.includes(field.value) && (
+            <option value={field.value}>{field.value} (unrecognized)</option>
+          )}
+          {field.options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
       ) : (
         <input type="text" value={field.value} onChange={(e) => onChange(e.target.value)} />
       )}
