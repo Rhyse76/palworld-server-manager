@@ -1,25 +1,31 @@
-# Palworld Server Manager
+# RhyseGaming Server Manager
 
-A clean, modern, all-in-one desktop app for running your own **Palworld dedicated server**
-on Windows — install, configure, monitor, back up, and automate it, all from one window.
+A clean, modern, all-in-one desktop app for running your own dedicated game server on
+Windows — install, configure, monitor, back up, and automate it, all from one window.
+Supports **Palworld**, **ARK: Survival Ascended**, and **Enshrouded**, with more games planned.
 
 **➡️ Download & screenshots: [rhysegaming.com/palworld](https://rhysegaming.com/palworld)**
 
-> Unofficial, community-made tool. Not affiliated with or endorsed by Pocketpair, Inc.
-> "Palworld" is a trademark of its respective owner.
+> Unofficial, community-made tool. Not affiliated with or endorsed by Pocketpair, Inc.,
+> Studio Wildcard, or Keen Games GmbH. "Palworld," "ARK: Survival Ascended," and
+> "Enshrouded" are trademarks of their respective owners.
 
 ## Features
 
 - **One-click install & update** — bootstraps SteamCMD and installs/updates the dedicated
-  server (Steam app `2394010`) with live progress. You don't need to own Palworld.
-- **Full config editor** — every setting from `PalWorldSettings.ini` as friendly toggles and
-  inputs, with search. Import/export presets.
-- **Live dashboard** — online players, server FPS/uptime, broadcast, kick/ban, save, graceful
-  shutdown, via the server's REST API (one-click enable).
+  server (anonymous download, no game ownership required) with live progress.
+- **Full config editor** — every setting as friendly toggles and inputs, with search.
+  Import/export presets.
+- **Live dashboard** — online players, kick/ban, broadcast, graceful shutdown — via REST
+  (Palworld) or RCON (ARK: Survival Ascended), one-click enable. (Enshrouded has no live
+  control protocol of its own, so this doesn't apply there.)
+- **Mods** — manage local `.pak` mods (Palworld) or a CurseForge mod-id list (ARK: Survival
+  Ascended).
 - **Backups & restore** — one-click zipped snapshots of the world save; restore anytime.
 - **Automation** — scheduled restarts, scheduled backups (with pruning), and a **crash
   watchdog** that auto-restarts the server if it dies unexpectedly.
-- **Multi-server profiles** — manage several servers and switch between them instantly.
+- **Multi-server profiles** — manage several servers (even different games) and switch
+  between them instantly.
 
 ## Download
 
@@ -32,8 +38,8 @@ The installer isn't code-signed yet, so Windows SmartScreen may warn you — cli
 
 ## Tech
 
-[Tauri 2](https://tauri.app) (Rust backend) + React/TypeScript frontend. Tiny native binary
-(~13 MB), builds `.msi` and `.exe` installers.
+[Tauri 2](https://tauri.app) (Rust backend) + React/TypeScript frontend. Tiny native binary,
+builds `.msi` and `.exe` installers.
 
 ### Build from source
 

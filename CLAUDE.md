@@ -1,8 +1,9 @@
-# Palworld Server Manager
+# RhyseGaming Server Manager
 
-A next-gen desktop GUI for installing, configuring, and running a **Palworld dedicated
-server** on Windows. Goal: a polished, reliable alternative to the existing community
-managers (which are largely abandoned or partly broken).
+A next-gen desktop GUI for installing, configuring, and running **Palworld, ARK: Survival
+Ascended, and Enshrouded dedicated servers** on Windows. Goal: a polished, reliable
+alternative to the existing community managers (which are largely abandoned or partly
+broken).
 
 This project is **independent** of any other repo on this machine.
 
@@ -106,17 +107,19 @@ Same command updates. Server binary on Windows is `PalServer.exe` in the install
     listing, and the updater endpoint URL are all Palworld-specific today.
   - Plan: keep shipping Palworld as-is; when ready, do the engine extraction ONCE with Palworld as
     adapter #1, then add ARK, then Enshrouded, under a game-neutral name.
-  - **DECIDED (2026-07): the game-neutral name is "RhyseGaming Server Manager"** (on-brand for
-    rhysegaming.com, game-neutral so it survives the shift). Rename is DEFERRED to the multi-game
-    shift to avoid a name/marketing mismatch while it's Palworld-only. Already done now: app
-    recolored to the RhyseGaming palette (navy/slate + blue `#3b82f6`, green for online). Also
-    doable independently now: MS Store **publisher identity = RhyseGaming (individual, not a
-    company)** — publisher can be RhyseGaming while the app stays the Palworld listing for now.
-  - Rename gotcha when it happens: KEEP the Tauri `bundle.identifier` stable (changing it makes the
-    installer a NEW app, not an upgrade). Repo rename is fine (GitHub 301-redirects the old updater
-    endpoint). Rename touches: in-app title/About, repo, updater endpoint, installer name, Store
-    listing, rhysegaming.com/palworld page. Also delete dead `src/App.css` (Vite template leftover,
-    not imported by `main.tsx`).
+  - **DECIDED (2026-07): the game-neutral name is "RhyseGaming Server Manager"**. **Cosmetic
+    rename DONE (2026-07)**: `tauri.conf.json` (`productName`/`mainBinaryName`/window title,
+    `identifier` deliberately left as `com.palmanager.desktop`), `index.html`, About page,
+    UPnP description string, `msix/` build script + manifest, READMEs, this file's release-process
+    installer filename. **Still deferred** (live/external, needs explicit sequencing — not done
+    casually): GitHub repo rename + updater endpoint URL (must ship together as one coordinated,
+    version-bumped release so self-update keeps working for existing installs), MS Store listing
+    name (external Partner Center action; also don't touch while the current cert review is
+    in flight), rhysegaming.com/palworld page (outside this repo).
+  - Rename gotcha when the repo/updater part happens: KEEP the Tauri `bundle.identifier` stable
+    (changing it makes the installer a NEW app, not an upgrade). Repo rename is fine (GitHub
+    301-redirects the old updater endpoint) but still update the URL in `tauri.conf.json` for new
+    builds rather than relying on the redirect indefinitely.
 
 ## Commands
 
@@ -168,10 +171,10 @@ Every release MUST be **signed** and ship a matching `latest.json`, or self-upda
    TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" npm run tauri build
    ```
    Produces `…-setup.exe` and `…-setup.exe.sig` under `target/release/bundle/nsis/`.
-3. Create the GitHub release `vX.Y.Z`, upload the installer as `PalworldServerManager-Setup.exe`,
+3. Create the GitHub release `vX.Y.Z`, upload the installer as `RhyseGamingServerManager-Setup.exe`,
    and upload a `latest.json` asset:
    `{"version":"X.Y.Z","notes":"…","pub_date":"<ISO>","platforms":{"windows-x86_64":
-   {"signature":"<contents of the .sig>","url":"https://github.com/Rhyse76/palworld-server-manager/releases/download/vX.Y.Z/PalworldServerManager-Setup.exe"}}}`
+   {"signature":"<contents of the .sig>","url":"https://github.com/Rhyse76/palworld-server-manager/releases/download/vX.Y.Z/RhyseGamingServerManager-Setup.exe"}}}`
    (Release body via `curl` must have NO unescaped double-quotes.)
 4. Users on ≥ v0.4.0 then get the update in-app.
 

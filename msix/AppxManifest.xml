@@ -5,12 +5,12 @@
   Replace the four __TOKENS__ below with the values Microsoft Partner Center
   gives you AFTER you reserve the app name (Product identity → "App management →
   Product identity"):
-    __PACKAGE_IDENTITY_NAME__   = "Package/Identity/Name"          (e.g. 12345RhyseGaming.PalworldServerManager)
+    __PACKAGE_IDENTITY_NAME__   = "Package/Identity/Name"          (e.g. 12345RhyseGaming.ServerManager)
     __PUBLISHER_ID__            = "Package/Identity/Publisher"     (e.g. CN=ABC12345-....)
     __PUBLISHER_DISPLAY_NAME__  = "Package/Properties/PublisherDisplayName" (e.g. Rhyse Gaming)
-    __APP_DISPLAY_NAME__        = the reserved app name shown in the Store (Store may require an
-                                   "unofficial" wording for the Palworld trademark, e.g.
-                                   "Server Manager for Palworld (Unofficial)")
+    __APP_DISPLAY_NAME__        = the reserved app name shown in the Store, e.g.
+                                   "RhyseGaming Server Manager" (game-neutral, so it doesn't need
+                                   per-game trademark wording the way a Palworld-only listing did)
 
   The build script (build-msix.ps1) does this substitution for you from parameters.
 -->
@@ -41,12 +41,12 @@
   </Resources>
 
   <Applications>
-    <Application Id="PalworldServerManager"
-      Executable="PalworldServerManager.exe"
+    <Application Id="RhyseGamingServerManager"
+      Executable="RhyseGamingServerManager.exe"
       EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="__APP_DISPLAY_NAME__"
-        Description="Install, configure, monitor, back up, and automate your Palworld dedicated server - all from one desktop app."
+        Description="Install, configure, monitor, back up, and automate your Palworld, ARK: Survival Ascended, or Enshrouded dedicated server - all from one desktop app."
         BackgroundColor="transparent"
         Square150x150Logo="assets\Square150x150Logo.png"
         Square44x44Logo="assets\Square44x44Logo.png">
@@ -61,7 +61,8 @@
 
   <Capabilities>
     <!-- Desktop app repackaged as MSIX: runs at full trust so it can launch
-         SteamCMD / PalServer.exe and manage server files like a normal app. -->
+         SteamCMD / the dedicated server executable and manage server files like a
+         normal app. -->
     <rescap:Capability Name="runFullTrust" />
   </Capabilities>
 </Package>

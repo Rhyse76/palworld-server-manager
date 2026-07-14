@@ -1,5 +1,5 @@
 <#
-  Builds an MSIX package for Palworld Server Manager.
+  Builds an MSIX package for RhyseGaming Server Manager.
 
   TWO MODES:
 
@@ -13,30 +13,30 @@
      upload the unsigned .msix to Partner Center and Microsoft signs it.
 
         powershell -ExecutionPolicy Bypass -File build-msix.ps1 `
-          -PackageName "12345RhyseGaming.PalworldServerManager" `
+          -PackageName "12345RhyseGaming.ServerManager" `
           -PublisherId "CN=ABC12345-6789-...." `
           -PublisherDisplayName "Rhyse Gaming" `
-          -AppDisplayName "Server Manager for Palworld (Unofficial)"
+          -AppDisplayName "RhyseGaming Server Manager"
 
   Requires: the release build to exist
-  (src-tauri\target\release\PalworldServerManager.exe -> run `npm run tauri build` first)
+  (src-tauri\target\release\RhyseGamingServerManager.exe -> run `npm run tauri build` first)
   and the Windows SDK (makeappx.exe / signtool.exe).
 #>
 param(
-  [string]$PackageName          = "RhyseGaming.PalworldServerManager.Test",
+  [string]$PackageName          = "RhyseGaming.ServerManager.Test",
   [string]$PublisherId          = "CN=RhyseGamingTest",
   [string]$PublisherDisplayName = "Rhyse Gaming",
-  [string]$AppDisplayName       = "Palworld Server Manager",
+  [string]$AppDisplayName       = "RhyseGaming Server Manager",
   [string]$Version              = "0.4.4.0",
   [switch]$Test
 )
 
 $ErrorActionPreference = "Stop"
 $here    = Split-Path -Parent $MyInvocation.MyCommand.Path
-$exe     = Join-Path $here "..\src-tauri\target\release\PalworldServerManager.exe"
+$exe     = Join-Path $here "..\src-tauri\target\release\RhyseGamingServerManager.exe"
 $staging = Join-Path $here "staging"
 $outDir  = Join-Path $here "out"
-$msix    = Join-Path $outDir "PalworldServerManager.msix"
+$msix    = Join-Path $outDir "RhyseGamingServerManager.msix"
 
 if (-not (Test-Path $exe)) { throw "Release exe not found at $exe. Run 'npm run tauri build' first." }
 
@@ -54,7 +54,7 @@ if (-not $makeappx) { throw "makeappx.exe not found (install the Windows SDK)." 
 # --- stage the package layout ---
 if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $staging, $outDir | Out-Null
-Copy-Item $exe (Join-Path $staging "PalworldServerManager.exe")
+Copy-Item $exe (Join-Path $staging "RhyseGamingServerManager.exe")
 Copy-Item (Join-Path $here "assets") (Join-Path $staging "assets") -Recurse
 
 # --- write the manifest with real values ---
@@ -80,7 +80,7 @@ if ($Test) {
   if (-not $signtool) { throw "signtool.exe not found." }
   Write-Host "Creating self-signed test certificate (subject must match Publisher: $PublisherId)..." -ForegroundColor Cyan
   $cert = New-SelfSignedCertificate -Type Custom -Subject $PublisherId `
-            -KeyUsage DigitalSignature -FriendlyName "Palworld Server Manager Test" `
+            -KeyUsage DigitalSignature -FriendlyName "RhyseGaming Server Manager Test" `
             -CertStoreLocation "Cert:\CurrentUser\My" `
             -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
   $pfxPath = Join-Path $outDir "test-cert.pfx"

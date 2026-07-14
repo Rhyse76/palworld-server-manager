@@ -201,7 +201,7 @@ pub fn forward(app: &AppHandle) -> Result<String, String> {
             port,
             SocketAddrV4::new(local, port),
             0, // 0 = no lease expiry
-            "Palworld Server Manager",
+            "RhyseGaming Server Manager",
         )
         .map_err(|e| format!("UPnP failed to open the port ({e}). Forward it manually."))?;
     let ext = gateway
