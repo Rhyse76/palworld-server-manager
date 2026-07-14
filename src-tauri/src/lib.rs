@@ -305,6 +305,13 @@ fn set_backup_mirror(app: AppHandle, dir: String) -> Result<(), String> {
 
 // ---- Profiles ----
 
+/// The default install location for `game` — used by the first-run wizard's game
+/// picker to seed a new profile without prompting for a folder.
+#[tauri::command]
+fn default_install_dir(app: AppHandle, game: String) -> Result<String, String> {
+    settings::default_install_dir_for(&app, &game).map(|p| p.to_string_lossy().to_string())
+}
+
 #[tauri::command]
 fn add_profile(app: AppHandle, name: String, path: String, game: String) -> Result<String, String> {
     let id = settings::add_profile(&app, &name, &path, &game)?;
@@ -493,6 +500,7 @@ pub fn run() {
             backup_delete,
             backup_open_folder,
             set_backup_mirror,
+            default_install_dir,
             add_profile,
             set_active_profile,
             rename_profile,

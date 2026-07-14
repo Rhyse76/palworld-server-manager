@@ -166,6 +166,7 @@ export const api = {
   setBackupMirror: (dir: string) => invoke<void>("set_backup_mirror", { dir }),
 
   // Profiles
+  defaultInstallDir: (game: string) => invoke<string>("default_install_dir", { game }),
   addProfile: (name: string, path: string, game: string) =>
     invoke<string>("add_profile", { name, path, game }),
   gamesList: () => invoke<GameInfo[]>("games_list"),

@@ -1,21 +1,42 @@
 import { useEffect, useState } from "react";
-import { api, onInstallLog, onInstallProgress, type StatusInfo } from "../api";
+import { api, onInstallLog, onInstallProgress, type GameInfo, type StatusInfo } from "../api";
 
 interface Props {
   status: StatusInfo | null;
   refresh: () => void;
   notify: (msg: string, error?: boolean) => void;
   gameName: string;
+  games: GameInfo[];
+  activeGameId: string;
+  activeProfileId?: string;
+  profileCount: number;
+  liveControl: "rest" | "rcon" | "none";
   onClose: () => void;
 }
 
 /** Guided first-run setup, shown when no server is installed yet. */
-export default function FirstRunWizard({ status, refresh, notify, gameName, onClose }: Props) {
+export default function FirstRunWizard({
+  status,
+  refresh,
+  notify,
+  gameName,
+  games,
+  activeGameId,
+  activeProfileId,
+  profileCount,
+  liveControl,
+  onClose,
+}: Props) {
   const [step, setStep] = useState(0);
   const [working, setWorking] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [phase, setPhase] = useState("");
   const installed = status?.installed ?? false;
+  // Only offer a game choice on a genuinely fresh setup (the single auto-created
+  // profile, nothing installed yet) — a returning user with multiple profiles already
+  // knows how to add one for another game from Settings.
+  const showGameChoice = profileCount === 1 && !installed;
 
   useEffect(() => {
     const un = [
@@ -49,7 +70,7 @@ export default function FirstRunWizard({ status, refresh, notify, gameName, onCl
       if (found.length === 0) {
         notify("No existing server found on this PC.", true);
       } else {
-        await api.addProfile(found[0].source, found[0].path, "palworld");
+        await api.addProfile(found[0].source, found[0].path, activeGameId);
         notify("Connected to your existing server.");
         refresh();
       }
@@ -57,6 +78,26 @@ export default function FirstRunWizard({ status, refresh, notify, gameName, onCl
       notify(String(e), true);
     } finally {
       setWorking(false);
+    }
+  }
+
+  async function chooseGame(gameId: string) {
+    if (gameId === activeGameId || switching) return;
+    setSwitching(true);
+    try {
+      const dir = await api.defaultInstallDir(gameId);
+      await api.addProfile("Default", dir, gameId);
+      // The pre-switch state was the sole pristine profile (that's the showGameChoice
+      // gate) — safe to drop it now that the new one is active, so we don't leave an
+      // empty never-installed profile behind every time someone picks a different game.
+      if (profileCount === 1 && activeProfileId) {
+        await api.deleteProfile(activeProfileId);
+      }
+      refresh();
+    } catch (e) {
+      notify(String(e), true);
+    } finally {
+      setSwitching(false);
     }
   }
 
@@ -77,18 +118,12 @@ export default function FirstRunWizard({ status, refresh, notify, gameName, onCl
     }
   }
 
-  const steps = [
+  // Numbered steps auto-renumber based on which ones actually apply (e.g. no
+  // live-control step for a game with none), so nothing goes "1 · ... 3 · ..." with a
+  // gap.
+  const numberedSteps = [
     {
-      title: "Welcome 👋",
-      body: (
-        <p>
-          Let's get your {gameName} dedicated server running in a few quick steps. You can skip
-          this any time — everything's also available from the sidebar.
-        </p>
-      ),
-    },
-    {
-      title: "1 · Get a server",
+      suffix: "Get a server",
       body: (
         <>
           <p>
@@ -120,22 +155,27 @@ export default function FirstRunWizard({ status, refresh, notify, gameName, onCl
         </>
       ),
     },
+    ...(liveControl === "none"
+      ? []
+      : [
+          {
+            suffix: liveControl === "rcon" ? "Enable RCON" : "Enable the live dashboard",
+            body: (
+              <>
+                <p>
+                  {liveControl === "rcon"
+                    ? "Turn on RCON so you get the live Dashboard (players, kick/ban, broadcast). This sets an admin password — restart the server afterward to apply."
+                    : "Turn on the server's REST API so you get the live Dashboard (players, kick/ban, broadcast). This sets an admin password — restart the server afterward to apply."}
+                </p>
+                <button className="btn primary" onClick={enableRest} disabled={working}>
+                  {working ? "Working…" : liveControl === "rcon" ? "Enable RCON" : "Enable REST API"}
+                </button>
+              </>
+            ),
+          },
+        ]),
     {
-      title: "2 · Enable the live dashboard",
-      body: (
-        <>
-          <p>
-            Turn on the server's REST API so you get the live Dashboard (players, kick/ban,
-            broadcast). This sets an admin password — restart the server afterward to apply.
-          </p>
-          <button className="btn primary" onClick={enableRest} disabled={working}>
-            {working ? "Working…" : "Enable REST API"}
-          </button>
-        </>
-      ),
-    },
-    {
-      title: "3 · You're set 🎉",
+      suffix: "You're set 🎉",
       body: (
         <p>
           Head to <strong>Server → Start</strong> to launch it. Use <strong>Configuration</strong>{" "}
@@ -144,6 +184,43 @@ export default function FirstRunWizard({ status, refresh, notify, gameName, onCl
         </p>
       ),
     },
+  ];
+
+  const steps = [
+    ...(showGameChoice
+      ? [
+          {
+            title: "Choose your game",
+            body: (
+              <>
+                <p>Which game are you setting up? You can add more later from Settings → Profiles.</p>
+                <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+                  {games.map((g) => (
+                    <button
+                      key={g.id}
+                      className={`btn ${g.id === activeGameId ? "primary" : ""}`}
+                      onClick={() => chooseGame(g.id)}
+                      disabled={switching}
+                    >
+                      {g.displayName}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ),
+          },
+        ]
+      : []),
+    {
+      title: "Welcome 👋",
+      body: (
+        <p>
+          Let's get your {gameName} dedicated server running in a few quick steps. You can skip
+          this any time — everything's also available from the sidebar.
+        </p>
+      ),
+    },
+    ...numberedSteps.map((s, i) => ({ title: `${i + 1} · ${s.suffix}`, body: s.body })),
   ];
 
   const s = steps[step];
@@ -176,13 +253,14 @@ export default function FirstRunWizard({ status, refresh, notify, gameName, onCl
           </span>
           <div className="row" style={{ gap: 8 }}>
             {step > 0 && (
-              <button className="btn" onClick={() => setStep(step - 1)}>
+              <button className="btn" onClick={() => setStep(step - 1)} disabled={switching}>
                 Back
               </button>
             )}
             <button
               className="btn primary"
               onClick={() => (last ? onClose() : setStep(step + 1))}
+              disabled={switching}
             >
               {last ? "Finish" : "Next"}
             </button>

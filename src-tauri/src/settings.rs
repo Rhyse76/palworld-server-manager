@@ -193,8 +193,20 @@ pub fn install_dir(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 pub fn default_install_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    default_install_dir_for(app, "palworld")
+}
+
+/// Default install dir for `game`, distinct per game so picking a different game (e.g.
+/// in the first-run wizard) never collides with an existing profile's install dir.
+/// Palworld keeps the original bare "server" path for backward compatibility with
+/// installs that predate multi-game support.
+pub fn default_install_dir_for(app: &AppHandle, game: &str) -> Result<PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    Ok(dir.join("server"))
+    Ok(if game.is_empty() || game == "palworld" {
+        dir.join("server")
+    } else {
+        dir.join(format!("server-{game}"))
+    })
 }
 
 pub fn steamcmd_dir(app: &AppHandle) -> Result<PathBuf, String> {

@@ -30,7 +30,8 @@ pub fn detect(app: &AppHandle) -> Vec<DetectedInstall> {
     let mut out = Vec::new();
     let mut seen = HashSet::new();
 
-    if let Ok(dir) = settings::default_install_dir(app) {
+    let active_id = crate::game::active().spec().id;
+    if let Ok(dir) = settings::default_install_dir_for(app, active_id) {
         consider(&mut out, &mut seen, dir, "App-managed");
     }
 

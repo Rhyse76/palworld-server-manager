@@ -206,6 +206,11 @@ export default function App() {
           refresh={refresh}
           notify={notify}
           gameName={activeGameName}
+          games={games}
+          activeGameId={activeGameId}
+          activeProfileId={activeProfileObj?.id}
+          profileCount={config?.profiles.length ?? 1}
+          liveControl={activeGame?.liveControl ?? "rest"}
           onClose={() => setWizardOpen(false)}
         />
       )}
