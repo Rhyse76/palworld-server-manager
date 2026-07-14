@@ -168,9 +168,17 @@ Every release MUST be **signed** and ship a matching `latest.json`, or self-upda
    secrets section; empty password; pubkey is in `tauri.conf.json > plugins.updater`):
    ```
    TAURI_SIGNING_PRIVATE_KEY="$(cat <path-from-CLAUDE.local.md>)" \
-   TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" npm run tauri build
+   TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" \
+   CURSEFORGE_API_KEY="$(cat <curseforge-key-path-from-CLAUDE.local.md>)" \
+   npm run tauri build
    ```
    Produces `…-setup.exe` and `…-setup.exe.sig` under `target/release/bundle/nsis/`.
+   `CURSEFORGE_API_KEY` is baked into the binary at compile time (`option_env!` in
+   `curseforge.rs`) so the Mods page's CurseForge search works out of the box for every
+   user without them needing their own key (Settings still lets a user override with
+   their own key, which always takes priority). Omitting this var still produces a
+   working build — search just falls back to "no key configured" until a user sets
+   their own.
 3. Create the GitHub release `vX.Y.Z`, upload the installer as `RhyseGamingServerManager-Setup.exe`,
    and upload a `latest.json` asset:
    `{"version":"X.Y.Z","notes":"…","pub_date":"<ISO>","platforms":{"windows-x86_64":

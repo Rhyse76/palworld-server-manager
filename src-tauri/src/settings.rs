@@ -106,6 +106,10 @@ pub struct AppConfig {
     pub backup_mirror_dir: String,
     /// Hide the server's console window when launching (default: show it).
     pub hide_server_console: bool,
+    /// CurseForge API key (console.curseforge.com), used to search mods for games
+    /// with `ModsKind::CurseForgeIds` (e.g. ARK: SA). Stored plaintext in this local
+    /// config.json — same trust boundary as the Discord webhook URL above.
+    pub curseforge_api_key: String,
     /// Legacy single-install field, migrated into a profile on first load.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install_dir: Option<String>,
@@ -301,6 +305,12 @@ pub fn set_hide_console(app: &AppHandle, hide: bool) -> Result<(), String> {
 pub fn set_discord(app: &AppHandle, discord: Discord) -> Result<(), String> {
     let mut cfg = load(app);
     cfg.discord = discord;
+    save(app, &cfg)
+}
+
+pub fn set_curseforge_key(app: &AppHandle, key: String) -> Result<(), String> {
+    let mut cfg = load(app);
+    cfg.curseforge_api_key = key.trim().to_string();
     save(app, &cfg)
 }
 

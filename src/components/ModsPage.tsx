@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
-import { api, type GameInfo, type ModInfo } from "../api";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { api, type CurseForgeMod, type GameInfo, type ModInfo } from "../api";
 
 interface Props {
   notify: (msg: string, error?: boolean) => void;
@@ -152,6 +153,10 @@ function CurseForgeIdMods({ notify }: Props) {
   const [ids, setIds] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<CurseForgeMod[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
 
   async function load() {
     try {
@@ -164,6 +169,29 @@ function CurseForgeIdMods({ notify }: Props) {
   useEffect(() => {
     load();
   }, []);
+
+  async function search() {
+    if (!query.trim()) return;
+    setSearching(true);
+    try {
+      setResults(await api.curseforgeSearch(query.trim()));
+      setSearched(true);
+    } catch (e) {
+      notify(String(e), true);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function addFromSearch(mod: CurseForgeMod) {
+    try {
+      await api.modIdAdd(String(mod.id));
+      notify(`Added ${mod.name}. Restart the server so it can download it.`);
+      load();
+    } catch (e) {
+      notify(String(e), true);
+    }
+  }
 
   async function add() {
     const id = input.trim();
@@ -230,10 +258,78 @@ function CurseForgeIdMods({ notify }: Props) {
       </div>
 
       <div className="card">
-        <h2>Add a mod</h2>
+        <h2 style={{ marginTop: 0 }}>Search CurseForge</h2>
+        <div className="row">
+          <input
+            type="text"
+            placeholder="Search mods…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && search()}
+          />
+          <button className="btn primary" onClick={search} disabled={searching || !query.trim()}>
+            {searching ? "Searching…" : "Search"}
+          </button>
+        </div>
+
+        {searched && results.length === 0 && !searching && (
+          <p style={{ color: "var(--text-dim)", marginTop: 12 }}>No mods found.</p>
+        )}
+
+        {results.length > 0 && (
+          <table className="table" style={{ marginTop: 14 }}>
+            <thead>
+              <tr>
+                <th>Mod</th>
+                <th>Downloads</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((m) => {
+                const active = ids.includes(String(m.id));
+                return (
+                  <tr key={m.id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>
+                        {m.websiteUrl ? (
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              openUrl(m.websiteUrl!);
+                            }}
+                          >
+                            {m.name}
+                          </a>
+                        ) : (
+                          m.name
+                        )}
+                      </div>
+                      <div style={{ color: "var(--text-dim)", fontSize: 12 }}>{m.summary}</div>
+                    </td>
+                    <td>{m.downloadCount.toLocaleString()}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        className="btn"
+                        onClick={() => addFromSearch(m)}
+                        disabled={active}
+                      >
+                        {active ? "Added" : "Add"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="card">
+        <h2>Add by id</h2>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
-          Find the mod on CurseForge, copy its numeric project id from the page, and paste it
-          below.
+          Or paste a mod's numeric CurseForge project id directly.
         </p>
         <div className="row">
           <input

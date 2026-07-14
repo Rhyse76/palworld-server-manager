@@ -2,6 +2,7 @@ mod automation;
 mod backups;
 mod bans;
 mod config;
+mod curseforge;
 mod detect;
 mod discord;
 mod game;
@@ -427,6 +428,17 @@ fn mod_id_delete_files(app: AppHandle, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_curseforge_key(app: AppHandle, key: String) -> Result<(), String> {
+    settings::set_curseforge_key(&app, key)
+}
+
+#[tauri::command]
+async fn curseforge_search(app: AppHandle, query: String) -> Result<Vec<curseforge::ModResult>, String> {
+    let key = settings::load(&app).curseforge_api_key;
+    mods::search_curseforge(&key, &query).await
+}
+
+#[tauri::command]
 async fn inspect_save(app: AppHandle) -> Result<saves::SaveInfo, String> {
     let dir = settings::install_dir(&app)?;
     tauri::async_runtime::spawn_blocking(move || saves::inspect(&dir))
@@ -525,6 +537,8 @@ pub fn run() {
             mod_id_add,
             mod_id_remove,
             mod_id_delete_files,
+            set_curseforge_key,
+            curseforge_search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

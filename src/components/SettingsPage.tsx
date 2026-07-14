@@ -26,10 +26,29 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
   const hide = config?.hideServerConsole ?? false;
   const [discord, setDiscordState] = useState<Discord>(config?.discord ?? DISCORD_DEFAULT);
   const [savingDiscord, setSaving] = useState(false);
+  const [curseforgeKey, setCurseforgeKey] = useState(config?.curseforgeApiKey ?? "");
+  const [savingCurseforge, setSavingCurseforge] = useState(false);
 
   useEffect(() => {
     if (config?.discord) setDiscordState(config.discord);
   }, [config?.discord]);
+
+  useEffect(() => {
+    setCurseforgeKey(config?.curseforgeApiKey ?? "");
+  }, [config?.curseforgeApiKey]);
+
+  async function saveCurseforgeKey() {
+    setSavingCurseforge(true);
+    try {
+      await api.setCurseforgeKey(curseforgeKey);
+      notify("CurseForge API key saved.");
+      refresh();
+    } catch (e) {
+      notify(String(e), true);
+    } finally {
+      setSavingCurseforge(false);
+    }
+  }
 
   async function toggleConsole() {
     try {
@@ -174,6 +193,27 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
       </div>
 
       <div className="card">
+        <h2 style={{ marginTop: 0 }}>🧩 CurseForge API key</h2>
+        <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
+          Mod search on the Mods page (for games with a CurseForge mod id list, e.g. ARK: Survival
+          Ascended) already works out of the box with a shared key. Only set your own below if you
+          want a private quota — get a free key at console.curseforge.com → API Keys. Yours always
+          takes priority when set.
+        </p>
+        <input
+          className="search"
+          type="password"
+          placeholder="Optional — using the built-in key"
+          value={curseforgeKey}
+          onChange={(e) => setCurseforgeKey(e.target.value)}
+          style={{ marginBottom: 14 }}
+        />
+        <button className="btn primary" onClick={saveCurseforgeKey} disabled={savingCurseforge}>
+          {savingCurseforge ? "Saving…" : "Save"}
+        </button>
+      </div>
+
+      <div className="card">
         <h2>About</h2>
         <img
           src={logo}
@@ -181,7 +221,7 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
           style={{ width: 200, maxWidth: "100%", height: "auto", display: "block", margin: "0 0 10px" }}
         />
         <p style={{ margin: "0 0 6px" }}>
-          <strong>RhyseGaming Server Manager</strong> · v0.4.4
+          <strong>RhyseGaming Server Manager</strong> · v0.4.5
         </p>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
           An unofficial, community-made tool for running dedicated servers for Palworld,

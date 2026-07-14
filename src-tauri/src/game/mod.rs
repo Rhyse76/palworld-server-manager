@@ -43,7 +43,9 @@ pub enum ModsKind {
     /// `cache_dir_rel` (subfolders named `<mod-id>_<file-id>`, one level under an
     /// opaque session/list-hash folder) — we manage which ids are active and can
     /// clear a mod's cached files, but never download/unpack anything ourselves.
-    CurseForgeIds { active_key: &'static str, cache_dir_rel: &'static str },
+    /// `curseforge_game_id` is this game's numeric id in CurseForge's own catalog
+    /// (distinct from `cache_dir_rel`'s ids), used to scope mod search.
+    CurseForgeIds { active_key: &'static str, cache_dir_rel: &'static str, curseforge_game_id: u32 },
     /// No mod support (Enshrouded, for now).
     None,
 }

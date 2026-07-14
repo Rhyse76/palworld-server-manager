@@ -31,6 +31,11 @@ static SPEC: GameSpec = GameSpec {
     mods: ModsKind::CurseForgeIds {
         active_key: "gus|[ServerSettings]|ActiveMods#0",
         cache_dir_rel: "ShooterGame/Binaries/Win64/ShooterGame/Mods",
+        // 83374 is CurseForge's catalog id for ARK: Survival Ascended. Backed by the
+        // same real install referenced above — its Mods cache folder is literally
+        // named `Mods/83374/<mod-id>_<file-id>/`, matching CurseForge's own
+        // `<gameId>/<modId>_<fileId>` cache layout convention.
+        curseforge_game_id: 83374,
     },
     default_game_port: 7777,
     live_control: LiveControl::Rcon,

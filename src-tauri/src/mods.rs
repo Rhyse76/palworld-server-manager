@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::config;
+use crate::curseforge;
 use crate::game::{self, ModsKind};
 
 #[derive(Serialize)]
@@ -194,6 +195,15 @@ fn delete_cached_files(install_dir: &Path, id: &str) -> Result<(), String> {
 pub fn uninstall_id(install_dir: &Path, id: &str) -> Result<(), String> {
     remove_id(install_dir, id)?;
     delete_cached_files(install_dir, id)
+}
+
+/// Search CurseForge for mods of the active game, scoped to its catalog id.
+pub async fn search_curseforge(api_key: &str, query: &str) -> Result<Vec<curseforge::ModResult>, String> {
+    let game_id = match game::active().spec().mods {
+        ModsKind::CurseForgeIds { curseforge_game_id, .. } => curseforge_game_id,
+        _ => return Err("This game doesn't use a CurseForge mod id list.".into()),
+    };
+    curseforge::search(api_key, game_id, query).await
 }
 
 #[cfg(test)]

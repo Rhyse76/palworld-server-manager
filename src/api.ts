@@ -69,6 +69,7 @@ export interface AppConfig {
   announcements: Announcement[];
   backupMirrorDir: string;
   hideServerConsole: boolean;
+  curseforgeApiKey: string;
 }
 
 export type FieldKind = "bool" | "int" | "float" | "string" | "enum";
@@ -198,6 +199,8 @@ export const api = {
   modIdAdd: (id: string) => invoke<void>("mod_id_add", { id }),
   modIdRemove: (id: string) => invoke<void>("mod_id_remove", { id }),
   modIdDeleteFiles: (id: string) => invoke<void>("mod_id_delete_files", { id }),
+  setCurseforgeKey: (key: string) => invoke<void>("set_curseforge_key", { key }),
+  curseforgeSearch: (query: string) => invoke<CurseForgeMod[]>("curseforge_search", { query }),
 
   // Saves (M4)
   inspectSave: () => invoke<SaveInfo>("inspect_save"),
@@ -230,6 +233,15 @@ export interface ModInfo {
   name: string;
   enabled: boolean;
   sizeBytes: number;
+}
+
+export interface CurseForgeMod {
+  id: number;
+  name: string;
+  summary: string;
+  downloadCount: number;
+  thumbnailUrl: string | null;
+  websiteUrl: string | null;
 }
 
 export interface SaveInfo {
