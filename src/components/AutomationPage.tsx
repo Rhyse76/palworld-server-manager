@@ -28,7 +28,8 @@ const DEFAULTS: Automation = {
 };
 
 export default function AutomationPage({ config, refresh, notify, gameName }: Props) {
-  const [form, setForm] = useState<Automation>(config?.automation ?? DEFAULTS);
+  const activeProfile = config?.profiles.find((p) => p.id === config.activeProfile) ?? null;
+  const [form, setForm] = useState<Automation>(activeProfile?.automation ?? DEFAULTS);
   const [announcements, setAnnouncements] = useState<Announcement[]>(config?.announcements ?? []);
   const [saving, setSaving] = useState(false);
   const [activity, setActivity] = useState<string[]>([]);
@@ -36,8 +37,8 @@ export default function AutomationPage({ config, refresh, notify, gameName }: Pr
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    if (config?.automation) setForm(config.automation);
-  }, [config?.automation]);
+    if (activeProfile?.automation) setForm(activeProfile.automation);
+  }, [activeProfile?.id, activeProfile?.automation]);
   useEffect(() => {
     if (config?.announcements) setAnnouncements(config.announcements);
   }, [config?.announcements]);

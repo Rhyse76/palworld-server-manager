@@ -484,6 +484,7 @@ pub fn run() {
         .setup(|app| {
             // Point the engine at the active profile's game before anything runs.
             game::set_active(&settings::active_game_id(app.handle()));
+            backups::migrate_legacy(app.handle());
             automation::start(app.handle().clone());
             discord::start_player_watch(app.handle().clone());
             Ok(())

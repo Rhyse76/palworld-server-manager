@@ -61,7 +61,7 @@ pub fn start(app: AppHandle) {
 
 fn tick(app: &AppHandle) {
     let cfg = settings::load(app);
-    let a = &cfg.automation;
+    let a = settings::active_automation(app);
     let state = app.state::<SchedulerState>();
     let t = now();
 

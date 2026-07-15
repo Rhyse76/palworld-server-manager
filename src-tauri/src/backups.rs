@@ -27,14 +27,68 @@ pub struct BackupInfo {
     pub modified: u64,
 }
 
-pub fn backups_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("backups");
+/// Root folder all profiles' backups live under — `backups_dir` (per-profile) is
+/// what everything actually uses; this is only for the legacy migration below.
+fn backups_root(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("backups");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
+}
+
+/// The active profile's own backup folder — each profile gets its own subfolder
+/// (keyed by profile id, stable across renames) so different games' backups never
+/// mix and a restore can never land in the wrong game's save folder.
+pub fn backups_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let id = settings::active_profile(app)
+        .map(|p| p.id)
+        .ok_or("No active server profile.")?;
+    let dir = backups_root(app)?.join(id);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+/// One-time migration: backups used to live loose directly under `backups/` shared
+/// across every profile/game. Move any still sitting there into the first Palworld
+/// profile's folder (that's what pre-multi-game backups always were) so they don't
+/// silently vanish from the list. No-op once the root has no more loose zips.
+pub fn migrate_legacy(app: &AppHandle) {
+    let Ok(root) = backups_root(app) else { return };
+    let Ok(entries) = fs::read_dir(&root) else { return };
+    let loose: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_file() && p.extension().and_then(|e| e.to_str()) == Some("zip"))
+        .collect();
+    if loose.is_empty() {
+        return;
+    }
+    let cfg = settings::load(app);
+    let Some(palworld_id) = cfg.profiles.iter().find(|p| p.game == "palworld").map(|p| p.id.clone()) else {
+        return; // no Palworld profile to migrate into — leave them, nothing lost
+    };
+    let dest_dir = root.join(&palworld_id);
+    if fs::create_dir_all(&dest_dir).is_err() {
+        return;
+    }
+    for src in loose {
+        if let Some(name) = src.file_name() {
+            let _ = fs::rename(&src, dest_dir.join(name));
+        }
+    }
+}
+
+/// Subfolder name for the off-site mirror, so different profiles' backups land in
+/// clearly separate folders under one shared mirror root. Human-readable (the
+/// profile's current name) since this is what the user actually browses in e.g.
+/// OneDrive — unlike the local `backups_dir`, it's fine if renaming a profile
+/// starts a new folder here.
+fn mirror_subfolder_name(profile_name: &str) -> String {
+    let cleaned: String = profile_name
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' || c == '_' { c } else { '_' })
+        .collect();
+    let cleaned = cleaned.trim();
+    if cleaned.is_empty() { "Server".into() } else { cleaned.to_string() }
 }
 
 fn savegames_dir(install_dir: &Path) -> PathBuf {
@@ -51,12 +105,14 @@ pub fn create(app: &AppHandle, install_dir: &Path) -> Result<String, String> {
     let dest = backups_dir(app)?.join(&name);
     zip_dir(&src, &dest).map_err(|e| format!("backup failed: {e}"))?;
 
-    // Also copy to the off-site mirror folder, if configured.
+    // Also copy to the off-site mirror folder, if configured — in this profile's
+    // own subfolder so different games' backups don't mix in the mirror either.
     let mirror = settings::load(app).backup_mirror_dir;
     let mirror = mirror.trim();
     if !mirror.is_empty() {
-        let mdir = std::path::Path::new(mirror);
-        let _ = fs::create_dir_all(mdir);
+        let profile_name = settings::active_profile(app).map(|p| p.name).unwrap_or_default();
+        let mdir = std::path::Path::new(mirror).join(mirror_subfolder_name(&profile_name));
+        let _ = fs::create_dir_all(&mdir);
         if mdir.is_dir() {
             let _ = fs::copy(&dest, mdir.join(&name));
         }

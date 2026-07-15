@@ -27,6 +27,8 @@ export interface ServerProfile {
   game: string;
   /** Freeform extra command-line args, appended after the game's own auto-generated ones. */
   extraLaunchArgs: string;
+  /** This profile's own auto-restart/auto-backup/crash-watchdog settings. */
+  automation: Automation;
 }
 
 export interface Automation {
@@ -66,7 +68,6 @@ export interface Discord {
 export interface AppConfig {
   activeProfile: string | null;
   profiles: ServerProfile[];
-  automation: Automation;
   discord: Discord;
   announcements: Announcement[];
   backupMirrorDir: string;

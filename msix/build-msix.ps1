@@ -27,7 +27,7 @@ param(
   [string]$PublisherId          = "CN=RhyseGamingTest",
   [string]$PublisherDisplayName = "Rhyse Gaming",
   [string]$AppDisplayName       = "RhyseGaming Server Manager",
-  [string]$Version              = "0.4.6.0",
+  [string]$Version              = "0.4.7.0",
   [switch]$Test
 )
 

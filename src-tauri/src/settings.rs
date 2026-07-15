@@ -26,6 +26,11 @@ pub struct ServerProfile {
     /// this app doesn't validate or interpret them.
     #[serde(default)]
     pub extra_launch_args: String,
+    /// Auto-restart/auto-backup/crash-watchdog settings for this profile specifically
+    /// (each game server has its own schedule). Migrated once from the old global
+    /// `AppConfig.automation` on first load after upgrading — see `load()`.
+    #[serde(default)]
+    pub automation: Automation,
 }
 
 fn default_game() -> String {
@@ -104,7 +109,14 @@ pub struct Announcement {
 pub struct AppConfig {
     pub active_profile: Option<String>,
     pub profiles: Vec<ServerProfile>,
+    /// Legacy global automation settings — replaced by `ServerProfile.automation`
+    /// (each game server needs its own schedule). Kept only so `load()` can migrate
+    /// it onto profiles once; nothing reads it after that.
     pub automation: Automation,
+    /// Set once `automation` above has been copied onto every profile, so the
+    /// migration in `load()` runs exactly once even though the legacy field stays
+    /// in the file.
+    pub automation_migrated: bool,
     pub discord: Discord,
     pub announcements: Vec<Announcement>,
     /// Extra folder each backup is also copied to (e.g. a cloud-synced folder).
@@ -163,6 +175,7 @@ pub fn load(app: &AppHandle) -> AppConfig {
             install_dir: dir,
             game: default_game(),
             extra_launch_args: String::new(),
+            automation: Automation::default(),
         });
         changed = true;
     }
@@ -175,6 +188,16 @@ pub fn load(app: &AppHandle) -> AppConfig {
         .unwrap_or(false);
     if !active_ok {
         cfg.active_profile = cfg.profiles.first().map(|p| p.id.clone());
+        changed = true;
+    }
+
+    // One-time migration: automation used to be one global setting; copy it onto
+    // every existing profile so nobody's current schedule silently vanishes.
+    if !cfg.automation_migrated {
+        for p in &mut cfg.profiles {
+            p.automation = cfg.automation.clone();
+        }
+        cfg.automation_migrated = true;
         changed = true;
     }
 
@@ -193,6 +216,11 @@ pub fn active_profile(app: &AppHandle) -> Option<ServerProfile> {
 /// The active profile's game id (default `palworld`).
 pub fn active_game_id(app: &AppHandle) -> String {
     active_profile(app).map(|p| p.game).unwrap_or_else(default_game)
+}
+
+/// The active profile's automation settings.
+pub fn active_automation(app: &AppHandle) -> Automation {
+    active_profile(app).map(|p| p.automation).unwrap_or_default()
 }
 
 /// The install dir of the active profile.
@@ -257,6 +285,7 @@ pub fn add_profile(app: &AppHandle, name: &str, install_dir: &str, game: &str) -
         install_dir: install_dir.to_string(),
         game,
         extra_launch_args: String::new(),
+        automation: Automation::default(),
     });
     cfg.active_profile = Some(id.clone());
     save(app, &cfg)?;
@@ -310,7 +339,13 @@ pub fn delete_profile(app: &AppHandle, id: &str) -> Result<(), String> {
 
 pub fn set_automation(app: &AppHandle, automation: Automation) -> Result<(), String> {
     let mut cfg = load(app);
-    cfg.automation = automation;
+    let active = cfg.active_profile.clone();
+    let p = cfg
+        .profiles
+        .iter_mut()
+        .find(|p| Some(&p.id) == active.as_ref())
+        .ok_or("No active server profile.")?;
+    p.automation = automation;
     save(app, &cfg)
 }
 
