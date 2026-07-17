@@ -4,7 +4,7 @@ import logo from "../assets/logo.png";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { api, type AppConfig, type Discord } from "../api";
+import { api, type AppConfig, type Discord, type GameInfo } from "../api";
 
 interface Props {
   config: AppConfig | null;
@@ -20,18 +20,29 @@ const DISCORD_DEFAULT: Discord = {
   notifyServer: true,
   notifyPlayers: true,
   notifyBackups: true,
+  webhooks: {},
 };
 
 export default function SettingsPage({ config, refresh, notify }: Props) {
   const hide = config?.hideServerConsole ?? false;
   const [discord, setDiscordState] = useState<Discord>(config?.discord ?? DISCORD_DEFAULT);
+  const [discordDirty, setDiscordDirty] = useState(false);
   const [savingDiscord, setSaving] = useState(false);
   const [curseforgeKey, setCurseforgeKey] = useState(config?.curseforgeApiKey ?? "");
   const [savingCurseforge, setSavingCurseforge] = useState(false);
+  const [games, setGames] = useState<GameInfo[]>([]);
+  const [activeGameId, setActiveGameId] = useState("palworld");
 
   useEffect(() => {
-    if (config?.discord) setDiscordState(config.discord);
-  }, [config?.discord]);
+    api.gamesList().then(setGames).catch(() => {});
+    api.gameInfo().then((g) => setActiveGameId(g.id)).catch(() => {});
+  }, []);
+
+  // Only take a background poll's value while the user isn't mid-edit, so a 4s poll
+  // tick can't clobber an in-progress toggle change or half-typed webhook URL.
+  useEffect(() => {
+    if (config?.discord && !discordDirty) setDiscordState(config.discord);
+  }, [config?.discord, discordDirty]);
 
   useEffect(() => {
     setCurseforgeKey(config?.curseforgeApiKey ?? "");
@@ -62,12 +73,19 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
 
   function setD<K extends keyof Discord>(key: K, value: Discord[K]) {
     setDiscordState((d) => ({ ...d, [key]: value }));
+    setDiscordDirty(true);
+  }
+
+  function setWebhook(gameId: string, url: string) {
+    setDiscordState((d) => ({ ...d, webhooks: { ...d.webhooks, [gameId]: url } }));
+    setDiscordDirty(true);
   }
 
   async function saveDiscord() {
     setSaving(true);
     try {
       await api.setDiscord(discord);
+      setDiscordDirty(false);
       notify("Discord settings saved.");
       refresh();
     } catch (e) {
@@ -104,6 +122,7 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
   async function testDiscord() {
     try {
       await api.setDiscord(discord); // ensure the latest URL is saved before testing
+      setDiscordDirty(false);
       await api.discordTest();
       notify("Test message sent — check your Discord channel.");
     } catch (e) {
@@ -144,7 +163,7 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
             <h2 style={{ margin: 0 }}>🔔 Discord notifications</h2>
             <p style={{ color: "var(--text-dim)", margin: "6px 0 0" }}>
               Post server events to a Discord channel via a webhook (Channel → Edit → Integrations
-              → Webhooks → New Webhook → Copy URL).
+              → Webhooks → New Webhook → Copy URL). Each game can post to its own channel.
             </p>
           </div>
           <div
@@ -155,14 +174,20 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
           />
         </div>
 
-        <input
-          className="search"
-          type="text"
-          placeholder="https://discord.com/api/webhooks/…"
-          value={discord.webhookUrl}
-          onChange={(e) => setD("webhookUrl", e.target.value)}
-          style={{ marginBottom: 14 }}
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          {games.map((g) => (
+            <div className="field" key={g.id}>
+              <label style={{ minWidth: 170 }}>{g.displayName}</label>
+              <input
+                className="search"
+                type="text"
+                placeholder="https://discord.com/api/webhooks/…"
+                value={discord.webhooks[g.id] ?? ""}
+                onChange={(e) => setWebhook(g.id, e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <EventToggle
@@ -186,8 +211,12 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
           <button className="btn primary" onClick={saveDiscord} disabled={savingDiscord}>
             {savingDiscord ? "Saving…" : "Save"}
           </button>
-          <button className="btn" onClick={testDiscord} disabled={!discord.webhookUrl.trim()}>
-            Send test message
+          <button
+            className="btn"
+            onClick={testDiscord}
+            disabled={!(discord.webhooks[activeGameId] ?? "").trim()}
+          >
+            Send test message ({games.find((g) => g.id === activeGameId)?.displayName ?? "active game"})
           </button>
         </div>
       </div>
@@ -221,7 +250,7 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
           style={{ width: 200, maxWidth: "100%", height: "auto", display: "block", margin: "0 0 10px" }}
         />
         <p style={{ margin: "0 0 6px" }}>
-          <strong>RhyseGaming Server Manager</strong> · v0.4.7
+          <strong>RhyseGaming Server Manager</strong> · v0.4.8
         </p>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
           An unofficial, community-made tool for running dedicated servers for Palworld,

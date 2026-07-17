@@ -30,18 +30,31 @@ const DEFAULTS: Automation = {
 export default function AutomationPage({ config, refresh, notify, gameName }: Props) {
   const activeProfile = config?.profiles.find((p) => p.id === config.activeProfile) ?? null;
   const [form, setForm] = useState<Automation>(activeProfile?.automation ?? DEFAULTS);
+  const [formDirty, setFormDirty] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>(config?.announcements ?? []);
+  const [announcementsDirty, setAnnouncementsDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activity, setActivity] = useState<string[]>([]);
   const [update, setUpdate] = useState<UpdateStatus | null>(null);
   const [checking, setChecking] = useState(false);
 
+  // Profile actually changed (or first load): always reload, discarding any unsaved edits
+  // for the profile we just left.
   useEffect(() => {
-    if (activeProfile?.automation) setForm(activeProfile.automation);
-  }, [activeProfile?.id, activeProfile?.automation]);
+    setForm(activeProfile?.automation ?? DEFAULTS);
+    setFormDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProfile?.id]);
+
+  // Background poll refreshed the same profile's data: only take it if the user isn't
+  // mid-edit, so a 4s poll tick can't clobber an in-progress toggle change.
   useEffect(() => {
-    if (config?.announcements) setAnnouncements(config.announcements);
-  }, [config?.announcements]);
+    if (activeProfile?.automation && !formDirty) setForm(activeProfile.automation);
+  }, [activeProfile?.automation, formDirty]);
+
+  useEffect(() => {
+    if (config?.announcements && !announcementsDirty) setAnnouncements(config.announcements);
+  }, [config?.announcements, announcementsDirty]);
 
   useEffect(() => {
     const un = onActivityLog((line) => setActivity((a) => [...a.slice(-200), line]));
@@ -52,6 +65,7 @@ export default function AutomationPage({ config, refresh, notify, gameName }: Pr
 
   function set<K extends keyof Automation>(key: K, value: Automation[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+    setFormDirty(true);
   }
 
   async function save() {
@@ -59,6 +73,8 @@ export default function AutomationPage({ config, refresh, notify, gameName }: Pr
     try {
       await api.setAutomation(form);
       await api.setAnnouncements(announcements);
+      setFormDirty(false);
+      setAnnouncementsDirty(false);
       notify("Automation settings saved.");
       refresh();
     } catch (e) {
@@ -84,12 +100,15 @@ export default function AutomationPage({ config, refresh, notify, gameName }: Pr
       ...a,
       { id: crypto.randomUUID(), message: "", intervalMinutes: 30, enabled: true },
     ]);
+    setAnnouncementsDirty(true);
   }
   function updateAnnouncement(id: string, patch: Partial<Announcement>) {
     setAnnouncements((a) => a.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    setAnnouncementsDirty(true);
   }
   function removeAnnouncement(id: string) {
     setAnnouncements((a) => a.filter((x) => x.id !== id));
+    setAnnouncementsDirty(true);
   }
 
   return (

@@ -57,12 +57,11 @@ export default function App() {
   }, []);
 
   // If the active game hides the current page (e.g. switching to Enshrouded while on
-  // Dashboard/Mods/Save tools), fall back to the Server page.
+  // Mods/Save tools), fall back to the Server page.
   useEffect(() => {
     const gameId = config?.profiles.find((p) => p.id === config.activeProfile)?.game ?? "palworld";
     const g = games.find((x) => x.id === gameId);
     if (
-      (page === "dashboard" && g?.liveControl === "none") ||
       (page === "mods" && g?.modsKind === "none") ||
       (page === "saves" && gameId !== "palworld")
     ) {
@@ -127,11 +126,10 @@ export default function App() {
   const activeGameId = activeProfileObj?.game ?? "palworld";
   const activeGameName = activeGame?.displayName ?? "Palworld";
 
-  // Hide pages that don't apply to the active game: Dashboard (no live-control protocol
-  // to drive it, e.g. Enshrouded), Mods (no mod support, e.g. Enshrouded), and Save
-  // tools (Palworld's GVAS format only).
+  // Hide pages that don't apply to the active game: Mods (no mod support, e.g.
+  // Enshrouded) and Save tools (Palworld's GVAS format only). Dashboard always
+  // applies — it shows host performance even for games with no live-control protocol.
   const visibleNav = NAV.filter((n) => {
-    if (n.id === "dashboard") return activeGame?.liveControl !== "none";
     if (n.id === "mods") return activeGame?.modsKind !== "none";
     if (n.id === "saves") return activeGameId === "palworld";
     return true;
@@ -164,7 +162,7 @@ export default function App() {
           )}
           {status?.running ? "● Server online" : "○ Server offline"}
           <br />
-          v0.4.7
+          v0.4.8
         </div>
       </aside>
 
@@ -180,7 +178,7 @@ export default function App() {
         )}
         {page === "dashboard" && <DashboardPage notify={notify} />}
         {page === "connect" && <ConnectPage notify={notify} gameName={activeGameName} />}
-        {page === "config" && <ConfigPage notify={notify} />}
+        {page === "config" && <ConfigPage notify={notify} status={status} />}
         {page === "backups" && <BackupsPage config={config} notify={notify} />}
         {page === "automation" && (
           <AutomationPage
@@ -190,7 +188,7 @@ export default function App() {
             gameName={activeGameName}
           />
         )}
-        {page === "mods" && <ModsPage notify={notify} />}
+        {page === "mods" && <ModsPage notify={notify} status={status} />}
         {page === "saves" && <SavesPage notify={notify} />}
         {page === "logs" && <LogsPage />}
         {page === "settings" && (

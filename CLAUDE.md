@@ -163,7 +163,10 @@ The app self-updates via `tauri-plugin-updater`, reading
 Every release MUST be **signed** and ship a matching `latest.json`, or self-update breaks.
 
 1. Bump version everywhere: `tauri.conf.json`, `src/App.tsx` footer, `SettingsPage` About,
-   `msix/*` (`0.x.0.0`), and the site (`softwareVersion` + `vX` label).
+   `msix/*` (`0.x.0.0`), **and the website** — separate repo/directory
+   (`C:\Users\Rhyse\rhysegaming-site`, not this one), `servermanager/index.html`'s
+   `softwareVersion` JSON-LD field and the `vX.Y.Z` text near the download button. Easy to
+   forget since it's outside this repo and easy to open — has been missed more than once.
 2. **Signed build** (private key lives OUTSIDE the repo — path is in `CLAUDE.local.md`'s
    secrets section; empty password; pubkey is in `tauri.conf.json > plugins.updater`):
    ```

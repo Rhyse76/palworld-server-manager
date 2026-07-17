@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { api, type Overview, type Player } from "../api";
+import { api, type HostStats, type Overview, type Player } from "../api";
 
 interface Props {
   notify: (msg: string, error?: boolean) => void;
@@ -24,9 +24,30 @@ export default function DashboardPage({ notify }: Props) {
   const [unbanId, setUnbanId] = useState("");
   // Live-control mechanism of the active game: "rest" (Palworld), "rcon" (ARK), or "none".
   const [live, setLive] = useState<"rest" | "rcon" | "none" | null>(null);
+  const [hostStats, setHostStats] = useState<HostStats | null>(null);
 
   useEffect(() => {
     api.gameInfo().then((g) => setLive(g.liveControl)).catch(() => setLive("rest"));
+  }, []);
+
+  // Host CPU/RAM, independent of REST/RCON — reads the OS directly, so it works the
+  // same whether or not the live-control connection above is up.
+  useEffect(() => {
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const s = await api.hostStats();
+        if (!stopped) setHostStats(s);
+      } catch {
+        /* ignore */
+      }
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
   }, []);
 
   async function loadBans() {
@@ -68,7 +89,10 @@ export default function DashboardPage({ notify }: Props) {
         // No REST metrics for RCON games — just the player list + actions.
         setPlayers(await api.restPlayers());
       } else {
-        throw new Error("This game doesn't support live control while running.");
+        // No live-control protocol (e.g. Enshrouded) — nothing to fetch, the
+        // Dashboard just shows host performance below.
+        setOverview(null);
+        setPlayers([]);
       }
       setError(null);
     } catch (e) {
@@ -175,6 +199,7 @@ export default function DashboardPage({ notify }: Props) {
                 : "This game doesn't offer live control while the server is running."}
           </p>
         </div>
+        <HostStatsCard stats={hostStats} />
       </>
     );
   }
@@ -185,16 +210,21 @@ export default function DashboardPage({ notify }: Props) {
     <>
       <div className="page-head">
         <div>
-          <h1>{overview?.info.servername || "Dashboard"}</h1>
+          <h1>{live === "none" ? "Dashboard" : overview?.info.servername || "Dashboard"}</h1>
           <p>
-            {overview?.info.description || "Live server control"}
-            {overview?.info.version ? ` · v${overview.info.version}` : ""}
+            {live === "none"
+              ? "This game has no live-control protocol — here's how the host machine is doing."
+              : `${overview?.info.description || "Live server control"}${overview?.info.version ? ` · v${overview.info.version}` : ""}`}
           </p>
         </div>
-        <span className="pill ok">
-          <span className="dot" /> Connected
-        </span>
+        {live !== "none" && (
+          <span className="pill ok">
+            <span className="dot" /> Connected
+          </span>
+        )}
       </div>
+
+      <HostStatsCard stats={hostStats} />
 
       {live === "rest" && m && (
         <>
@@ -217,36 +247,39 @@ export default function DashboardPage({ notify }: Props) {
         </>
       )}
 
-      <div className="card">
-        <h2>Broadcast</h2>
-        <div className="row">
-          <input
-            className="search"
-            placeholder="Message to all players…"
-            value={broadcast}
-            onChange={(e) => setBroadcast(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && doBroadcast()}
-          />
-          <button className="btn primary" onClick={doBroadcast} disabled={!broadcast.trim()}>
-            Send
-          </button>
+      {live !== "none" && (
+        <div className="card">
+          <h2>Broadcast</h2>
+          <div className="row">
+            <input
+              className="search"
+              placeholder="Message to all players…"
+              value={broadcast}
+              onChange={(e) => setBroadcast(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && doBroadcast()}
+            />
+            <button className="btn primary" onClick={doBroadcast} disabled={!broadcast.trim()}>
+              Send
+            </button>
+          </div>
+          <div className="row" style={{ marginTop: 14 }}>
+            <button className="btn" onClick={() => send(() => api.restSave(), "World saved.")}>
+              Save world
+            </button>
+            <button className="btn danger" onClick={gracefulShutdown}>
+              Graceful shutdown (30s)
+            </button>
+          </div>
         </div>
-        <div className="row" style={{ marginTop: 14 }}>
-          <button className="btn" onClick={() => send(() => api.restSave(), "World saved.")}>
-            Save world
-          </button>
-          <button className="btn danger" onClick={gracefulShutdown}>
-            Graceful shutdown (30s)
-          </button>
-        </div>
-      </div>
+      )}
 
-      <div className="card">
-        <h2>Players online ({players.length})</h2>
-        {players.length === 0 ? (
-          <p style={{ color: "var(--text-dim)", margin: 0 }}>No players connected.</p>
-        ) : (
-          <table className="table">
+      {live !== "none" && (
+        <div className="card">
+          <h2>Players online ({players.length})</h2>
+          {players.length === 0 ? (
+            <p style={{ color: "var(--text-dim)", margin: 0 }}>No players connected.</p>
+          ) : (
+            <table className="table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -287,8 +320,9 @@ export default function DashboardPage({ notify }: Props) {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {live === "rest" && (
         <div className="card">
@@ -381,6 +415,30 @@ function Tile({ label, value }: { label: string; value: string }) {
     <div className="tile">
       <div className="tile-value">{value}</div>
       <div className="tile-label">{label}</div>
+    </div>
+  );
+}
+
+// Host machine performance — CPU/RAM for the whole machine, plus the active game's
+// server process specifically if it's running. Reads the OS directly, so it shows
+// up regardless of whether REST/RCON is connected.
+function HostStatsCard({ stats }: { stats: HostStats | null }) {
+  if (!stats) return null;
+  return (
+    <div className="tiles">
+      <Tile label="Host CPU" value={`${stats.cpuPercent.toFixed(0)}%`} />
+      <Tile
+        label="Host RAM"
+        value={`${stats.memUsedMb.toLocaleString()} / ${stats.memTotalMb.toLocaleString()} MB (${stats.memPercent.toFixed(0)}%)`}
+      />
+      <Tile
+        label="Server process CPU"
+        value={stats.serverCpuPercent != null ? `${stats.serverCpuPercent.toFixed(0)}%` : "—"}
+      />
+      <Tile
+        label="Server process RAM"
+        value={stats.serverMemMb != null ? `${stats.serverMemMb.toLocaleString()} MB` : "—"}
+      />
     </div>
   );
 }

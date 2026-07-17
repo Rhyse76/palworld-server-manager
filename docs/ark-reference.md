@@ -182,6 +182,24 @@ Takeaways (from a sampled subset — full set reviewed per-group at build time):
     whether it changes. `uninstall_id` (Tauri: `mod_id_delete_files`) combines this with
     `remove_id` for the Mods page's "Delete files" button (vs. plain "Remove", which only drops the
     id from the active list and leaves cached files in place for a redownload-free re-add).
+- ✅ **Access & Whitelist: exclusive-join + admin ID lists** (2026-07) — `ExclusiveJoin`/
+  `AdminListURL` added to the catalog; new `access.rs` manages
+  `PlayersExclusiveJoinList.txt` and the admin list (target file resolved from
+  `AdminListURL`, defaulting to `ShooterGame/Saved/adminlist.txt`), both plain text,
+  one EOS/Steam ID per line — confirmed against Steam ASA discussion threads +
+  ark.wiki.gg, not guessed. **Live-verified (2026-07)**: user confirmed the exclusive-join
+  list actually gates joins correctly (in list → can join, not in list → blocked).
+  **Confirmed gotcha (2026-07, community-documented, not an app bug)**: ARK: SA keeps
+  its loaded settings in memory and rewrites `GameUserSettings.ini`/`Game.ini` from that
+  snapshot when the server shuts down — silently discarding **any** config edit (not
+  just these two fields; the user hit it on `ExclusiveJoin` and `WhitelistOn`
+  specifically, but it's a `GameUserSettings.ini`-wide behavior, confirmed by multiple
+  hosting-provider docs) made while the server was running, once it's stopped/restarted.
+  The exclusive-join/admin **list files** above are unaffected (separate files ARK
+  doesn't cache in memory) — only in-ini key/value settings. Fix is UX, not code: the
+  Config page and the ARK Mods page (`ActiveMods` is the same ini field) now show a
+  warning and disable Save/Add/Remove while the server is running, instead of letting
+  edits silently vanish on next restart.
 - ⏭️ **Remaining (polish, not blocking function):**
   1. Install-progress bar didn't render for the ARK download (minor UI bug to chase).
 - ❌ **CurseForge mod search — decided against (2026-07)**: third-party API access isn't guaranteed

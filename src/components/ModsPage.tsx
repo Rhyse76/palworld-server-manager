@@ -1,18 +1,25 @@
 import { useEffect, useState } from "react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api, type CurseForgeMod, type GameInfo, type ModInfo } from "../api";
+import { api, type CurseForgeMod, type GameInfo, type ModInfo, type StatusInfo } from "../api";
 
 interface Props {
   notify: (msg: string, error?: boolean) => void;
+  status: StatusInfo | null;
 }
+
+// Same ARK: SA behavior noted in ConfigPage.tsx: it rewrites GameUserSettings.ini
+// (which ActiveMods lives in) from memory on shutdown, discarding edits made while
+// the server was running.
+const ARK_LIVE_EDIT_WARNING =
+  "The server is running. ARK: Survival Ascended rewrites its config file from memory when it shuts down, which silently discards mod changes made here. Stop the server first, make your changes, then start it again.";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export default function ModsPage({ notify }: Props) {
+export default function ModsPage({ notify, status }: Props) {
   const [gameInfo, setGameInfo] = useState<GameInfo | null>(null);
 
   useEffect(() => {
@@ -20,12 +27,12 @@ export default function ModsPage({ notify }: Props) {
   }, []);
 
   if (gameInfo?.modsKind === "curseforge-ids") {
-    return <CurseForgeIdMods notify={notify} />;
+    return <CurseForgeIdMods notify={notify} running={!!status?.running} />;
   }
   return <LocalFileMods notify={notify} />;
 }
 
-function LocalFileMods({ notify }: Props) {
+function LocalFileMods({ notify }: { notify: (msg: string, error?: boolean) => void }) {
   const [mods, setMods] = useState<ModInfo[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -149,7 +156,13 @@ function LocalFileMods({ notify }: Props) {
   );
 }
 
-function CurseForgeIdMods({ notify }: Props) {
+function CurseForgeIdMods({
+  notify,
+  running,
+}: {
+  notify: (msg: string, error?: boolean) => void;
+  running: boolean;
+}) {
   const [ids, setIds] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -184,6 +197,10 @@ function CurseForgeIdMods({ notify }: Props) {
   }
 
   async function addFromSearch(mod: CurseForgeMod) {
+    if (running) {
+      notify(ARK_LIVE_EDIT_WARNING, true);
+      return;
+    }
     try {
       await api.modIdAdd(String(mod.id));
       notify(`Added ${mod.name}. Restart the server so it can download it.`);
@@ -194,6 +211,10 @@ function CurseForgeIdMods({ notify }: Props) {
   }
 
   async function add() {
+    if (running) {
+      notify(ARK_LIVE_EDIT_WARNING, true);
+      return;
+    }
     const id = input.trim();
     if (!/^\d+$/.test(id)) {
       notify("Mod id must be numeric — copy it from the mod's CurseForge project page.", true);
@@ -213,6 +234,10 @@ function CurseForgeIdMods({ notify }: Props) {
   }
 
   async function remove(id: string) {
+    if (running) {
+      notify(ARK_LIVE_EDIT_WARNING, true);
+      return;
+    }
     const yes = await ask(`Remove mod ${id} from the active list? Any files ARK already downloaded for it are left in place.`, {
       title: "Remove mod",
       kind: "warning",
@@ -228,6 +253,10 @@ function CurseForgeIdMods({ notify }: Props) {
   }
 
   async function deleteFiles(id: string) {
+    if (running) {
+      notify(ARK_LIVE_EDIT_WARNING, true);
+      return;
+    }
     const yes = await ask(
       `Delete mod ${id}? This removes it from the active list AND deletes any files ARK has downloaded for it. This cannot be undone.`,
       { title: "Delete mod files", kind: "warning" },
@@ -256,6 +285,12 @@ function CurseForgeIdMods({ notify }: Props) {
           Refresh
         </button>
       </div>
+
+      {running && (
+        <div className="card" style={{ borderColor: "var(--warn)" }}>
+          <p style={{ margin: 0 }}>⚠️ {ARK_LIVE_EDIT_WARNING}</p>
+        </div>
+      )}
 
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Search CurseForge</h2>
@@ -313,7 +348,8 @@ function CurseForgeIdMods({ notify }: Props) {
                       <button
                         className="btn"
                         onClick={() => addFromSearch(m)}
-                        disabled={active}
+                        disabled={active || running}
+                        title={running ? ARK_LIVE_EDIT_WARNING : undefined}
                       >
                         {active ? "Added" : "Add"}
                       </button>
@@ -339,7 +375,12 @@ function CurseForgeIdMods({ notify }: Props) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
           />
-          <button className="btn primary" onClick={add} disabled={busy || !input.trim()}>
+          <button
+            className="btn primary"
+            onClick={add}
+            disabled={busy || !input.trim() || running}
+            title={running ? ARK_LIVE_EDIT_WARNING : undefined}
+          >
             {busy ? "Adding…" : "Add"}
           </button>
         </div>
@@ -362,10 +403,21 @@ function CurseForgeIdMods({ notify }: Props) {
                 <tr key={id}>
                   <td>{id}</td>
                   <td style={{ textAlign: "right" }}>
-                    <button className="btn" onClick={() => remove(id)} style={{ marginRight: 8 }}>
+                    <button
+                      className="btn"
+                      onClick={() => remove(id)}
+                      disabled={running}
+                      title={running ? ARK_LIVE_EDIT_WARNING : undefined}
+                      style={{ marginRight: 8 }}
+                    >
                       Remove
                     </button>
-                    <button className="btn danger" onClick={() => deleteFiles(id)}>
+                    <button
+                      className="btn danger"
+                      onClick={() => deleteFiles(id)}
+                      disabled={running}
+                      title={running ? ARK_LIVE_EDIT_WARNING : undefined}
+                    >
                       Delete files
                     </button>
                   </td>

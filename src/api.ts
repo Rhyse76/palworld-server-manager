@@ -59,10 +59,13 @@ export interface UpdateStatus {
 
 export interface Discord {
   enabled: boolean;
+  /** Legacy single webhook URL, no longer edited from the UI. */
   webhookUrl: string;
   notifyServer: boolean;
   notifyPlayers: boolean;
   notifyBackups: boolean;
+  /** Per-game webhook URLs, keyed by game id (e.g. "palworld", "ark-sa"). */
+  webhooks: Record<string, string>;
 }
 
 export interface AppConfig {
@@ -134,10 +137,20 @@ export interface EnableResult {
   generatedPassword: boolean;
 }
 
+export interface HostStats {
+  cpuPercent: number;
+  memUsedMb: number;
+  memTotalMb: number;
+  memPercent: number;
+  serverCpuPercent: number | null;
+  serverMemMb: number | null;
+}
+
 export const api = {
   getStatus: () => invoke<StatusInfo>("get_status"),
   getAppConfig: () => invoke<AppConfig>("get_app_config"),
   gameInfo: () => invoke<GameInfo>("game_info"),
+  hostStats: () => invoke<HostStats>("host_stats"),
   setInstallDir: (path: string) => invoke<void>("set_install_dir", { path }),
   installServer: () => invoke<void>("install_server"),
   startServer: () => invoke<void>("start_server"),
@@ -158,6 +171,12 @@ export const api = {
   restBan: (userid: string, message: string) => invoke<void>("rest_ban", { userid, message }),
   restUnban: (userid: string) => invoke<void>("rest_unban", { userid }),
   bansList: () => invoke<string[]>("bans_list"),
+
+  // ARK: SA player access lists
+  arkExclusiveJoinList: () => invoke<string[]>("ark_exclusive_join_list"),
+  arkSetExclusiveJoinList: (ids: string[]) => invoke<void>("ark_set_exclusive_join_list", { ids }),
+  arkAdminsList: () => invoke<string[]>("ark_admins_list"),
+  arkSetAdminsList: (ids: string[]) => invoke<void>("ark_set_admins_list", { ids }),
   restSave: () => invoke<void>("rest_save"),
   restShutdown: (seconds: number, message: string) =>
     invoke<void>("rest_shutdown", { seconds, message }),

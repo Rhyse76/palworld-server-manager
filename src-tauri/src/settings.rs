@@ -2,6 +2,7 @@
 //! the active profile, and automation settings. Also resolves the active install
 //! dir and the shared SteamCMD dir.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -76,10 +77,18 @@ impl Default for Automation {
 #[serde(rename_all = "camelCase", default)]
 pub struct Discord {
     pub enabled: bool,
+    /// Legacy single webhook URL, shared by every game before per-game webhooks.
+    /// No longer written to by the UI — kept so old configs still deserialize, and
+    /// as the seed value for the one-time migration into `webhooks` (see
+    /// `AppConfig.discord_migrated`).
     pub webhook_url: String,
     pub notify_server: bool,
     pub notify_players: bool,
     pub notify_backups: bool,
+    /// Per-game webhook URLs, keyed by game id (`game::by_id`), so e.g. Palworld and
+    /// ARK: SA can post to different Discord channels. The event-type toggles above
+    /// stay shared across all games.
+    pub webhooks: HashMap<String, String>,
 }
 
 impl Default for Discord {
@@ -90,6 +99,7 @@ impl Default for Discord {
             notify_server: true,
             notify_players: true,
             notify_backups: true,
+            webhooks: HashMap::new(),
         }
     }
 }
@@ -118,6 +128,11 @@ pub struct AppConfig {
     /// in the file.
     pub automation_migrated: bool,
     pub discord: Discord,
+    /// Set once the legacy single `discord.webhook_url` has been copied into
+    /// `discord.webhooks` for every game, so the migration in `load()` runs exactly
+    /// once even though the legacy field stays in the file.
+    #[serde(default)]
+    pub discord_migrated: bool,
     pub announcements: Vec<Announcement>,
     /// Extra folder each backup is also copied to (e.g. a cloud-synced folder).
     pub backup_mirror_dir: String,
@@ -198,6 +213,20 @@ pub fn load(app: &AppHandle) -> AppConfig {
             p.automation = cfg.automation.clone();
         }
         cfg.automation_migrated = true;
+        changed = true;
+    }
+
+    // One-time migration: Discord used to be one webhook URL shared by every game;
+    // seed the per-game map with it so nobody's existing notifications silently stop,
+    // and they can split channels out per game from Settings afterward.
+    if !cfg.discord_migrated {
+        let legacy_url = cfg.discord.webhook_url.trim().to_string();
+        if !legacy_url.is_empty() {
+            for spec in crate::game::all() {
+                cfg.discord.webhooks.entry(spec.id.to_string()).or_insert_with(|| legacy_url.clone());
+            }
+        }
+        cfg.discord_migrated = true;
         changed = true;
     }
 

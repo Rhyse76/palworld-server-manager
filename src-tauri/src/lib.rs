@@ -1,3 +1,4 @@
+mod access;
 mod automation;
 mod backups;
 mod bans;
@@ -6,6 +7,7 @@ mod curseforge;
 mod detect;
 mod discord;
 mod game;
+mod hoststats;
 mod logs;
 mod mods;
 mod network;
@@ -93,6 +95,13 @@ fn game_info() -> GameInfo {
 #[tauri::command]
 fn games_list() -> Vec<GameInfo> {
     game::all().into_iter().map(spec_to_info).collect()
+}
+
+/// Host machine CPU/RAM, and the active game's server process usage if running.
+/// Independent of REST/RCON — works the same for every game.
+#[tauri::command]
+fn host_stats() -> hoststats::HostStats {
+    hoststats::sample()
 }
 
 /// Point the active profile at a different install folder.
@@ -248,6 +257,28 @@ fn bans_list(app: AppHandle) -> Result<Vec<String>, String> {
     bans::list(&settings::install_dir(&app)?)
 }
 
+// ---- ARK: SA player access lists (exclusive-join allow list, admin list) ----
+
+#[tauri::command]
+fn ark_exclusive_join_list(app: AppHandle) -> Result<Vec<String>, String> {
+    access::exclusive_join_list(&settings::install_dir(&app)?)
+}
+
+#[tauri::command]
+fn ark_set_exclusive_join_list(app: AppHandle, ids: Vec<String>) -> Result<(), String> {
+    access::set_exclusive_join_list(&settings::install_dir(&app)?, &ids)
+}
+
+#[tauri::command]
+fn ark_admins_list(app: AppHandle) -> Result<Vec<String>, String> {
+    access::admins_list(&settings::install_dir(&app)?)
+}
+
+#[tauri::command]
+fn ark_set_admins_list(app: AppHandle, ids: Vec<String>) -> Result<(), String> {
+    access::set_admins_list(&settings::install_dir(&app)?, &ids)
+}
+
 #[tauri::command]
 async fn rest_save(app: AppHandle) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
@@ -361,8 +392,8 @@ fn set_discord(app: AppHandle, discord: settings::Discord) -> Result<(), String>
 #[tauri::command]
 fn discord_test(app: AppHandle) -> Result<(), String> {
     let cfg = settings::load(&app).discord;
-    if cfg.webhook_url.trim().is_empty() {
-        return Err("Enter a webhook URL first.".into());
+    if discord::active_webhook_url(&cfg).trim().is_empty() {
+        return Err("Enter a webhook URL for the active game first.".into());
     }
     discord::notify(&app, discord::Event::Test);
     Ok(())
@@ -494,6 +525,7 @@ pub fn run() {
             get_app_config,
             game_info,
             games_list,
+            host_stats,
             set_install_dir,
             install_server,
             start_server,
@@ -511,6 +543,10 @@ pub fn run() {
             rest_ban,
             rest_unban,
             bans_list,
+            ark_exclusive_join_list,
+            ark_set_exclusive_join_list,
+            ark_admins_list,
+            ark_set_admins_list,
             rest_save,
             rest_shutdown,
             enable_live_control,

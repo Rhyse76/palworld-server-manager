@@ -30,6 +30,7 @@ zip = "2"
 walkdir = "2"
 igd = "0.12"
 flate2 = "1"
+sysinfo = "0.32"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"

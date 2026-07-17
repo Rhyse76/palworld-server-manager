@@ -27,11 +27,18 @@ const RED: u32 = 0xe5534b;
 const AMBER: u32 = 0xe3b341;
 const GRAY: u32 = 0x8b98a5;
 
+/// The active game's webhook URL, so Palworld/ARK/Enshrouded can post to different
+/// Discord channels. Empty if the user hasn't set one for the currently active game.
+pub fn active_webhook_url(cfg: &settings::Discord) -> String {
+    cfg.webhooks.get(crate::game::active().spec().id).cloned().unwrap_or_default()
+}
+
 /// Post a notification if Discord is enabled and the relevant toggle is on.
 /// Fire-and-forget: the HTTP POST runs on its own thread so callers never block.
 pub fn notify(app: &AppHandle, event: Event) {
     let cfg = settings::load(app).discord;
-    if !cfg.enabled || cfg.webhook_url.trim().is_empty() {
+    let webhook_url = active_webhook_url(&cfg);
+    if !cfg.enabled || webhook_url.trim().is_empty() {
         return;
     }
 
@@ -69,7 +76,7 @@ pub fn notify(app: &AppHandle, event: Event) {
         return;
     }
 
-    let url = cfg.webhook_url.trim().to_string();
+    let url = webhook_url.trim().to_string();
     std::thread::spawn(move || {
         let mut embed = json!({ "title": title, "color": color });
         if !desc.is_empty() {

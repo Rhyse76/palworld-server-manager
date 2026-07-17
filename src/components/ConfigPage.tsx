@@ -1,21 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { api, type ConfigField } from "../api";
+import { api, type ConfigField, type StatusInfo } from "../api";
+import ArkAccessLists from "./ArkAccessLists";
 
 interface Props {
   notify: (msg: string, error?: boolean) => void;
+  status: StatusInfo | null;
 }
 
-export default function ConfigPage({ notify }: Props) {
+// ARK: SA keeps its loaded settings in memory and rewrites GameUserSettings.ini/
+// Game.ini with that in-memory snapshot when the server shuts down — silently
+// discarding any config edit made while it was running (community-confirmed
+// behavior, not an app bug). Safe order: stop the server, edit, then start again.
+const ARK_LIVE_EDIT_WARNING =
+  "The server is running. ARK: Survival Ascended rewrites its config file from memory when it shuts down, which silently discards any changes made here. Stop the server first, make your changes, then start it again.";
+
+export default function ConfigPage({ notify, status }: Props) {
   const [fields, setFields] = useState<ConfigField[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
   const [configFile, setConfigFile] = useState("the config file");
+  const [gameId, setGameId] = useState("server");
+  const arkLiveEditRisk = gameId === "ark-sa" && !!status?.running;
 
   useEffect(() => {
-    api.gameInfo().then((g) => setConfigFile(g.configFile)).catch(() => {});
+    api.gameInfo().then((g) => {
+      setConfigFile(g.configFile);
+      setGameId(g.id);
+    }).catch(() => {});
   }, []);
 
   async function load() {
@@ -54,7 +68,7 @@ export default function ConfigPage({ notify }: Props) {
     if (!fields.length) return;
     const dest = await saveDialog({
       title: "Export config preset",
-      defaultPath: "palworld-config.json",
+      defaultPath: `${gameId}-config.json`,
       filters: [{ name: "Config preset", extensions: ["json"] }],
     });
     if (!dest) return;
@@ -163,10 +177,21 @@ export default function ConfigPage({ notify }: Props) {
             server restart.
           </p>
         </div>
-        <button className="btn primary" onClick={save} disabled={saving || !fields.length}>
+        <button
+          className="btn primary"
+          onClick={save}
+          disabled={saving || !fields.length || arkLiveEditRisk}
+          title={arkLiveEditRisk ? ARK_LIVE_EDIT_WARNING : undefined}
+        >
           {saving ? "Saving…" : "Save changes"}
         </button>
       </div>
+
+      {arkLiveEditRisk && (
+        <div className="card" style={{ borderColor: "var(--warn)" }}>
+          <p style={{ margin: 0 }}>⚠️ {ARK_LIVE_EDIT_WARNING}</p>
+        </div>
+      )}
 
       <div className="toolbar">
         <input
@@ -224,6 +249,9 @@ export default function ConfigPage({ notify }: Props) {
                 <Field key={f.key} field={f} onChange={(v) => update(f.key, v)} />
               ))}
           </div>
+          {tab === "Access & Whitelist" && gameId === "ark-sa" && (
+            <ArkAccessLists notify={notify} />
+          )}
         </>
       ) : (
         groupOrder.map(([group, fs]) => (

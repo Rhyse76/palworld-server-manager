@@ -147,6 +147,8 @@ const ENTRIES: &[Entry] = &[
     ("gus", "[ServerSettings]", "ServerAdminPassword", "string", "", "Access & Whitelist"),
     ("gus", "[ServerSettings]", "SpectatorPassword", "string", "", "Access & Whitelist"),
     ("gus", "[ServerSettings]", "WhitelistOn", "bool", "false", "Access & Whitelist"),
+    ("gus", "[ServerSettings]", "ExclusiveJoin", "bool", "false", "Access & Whitelist"),
+    ("gus", "[ServerSettings]", "AdminListURL", "string", "", "Access & Whitelist"),
     ("gus", "[ServerSettings]", "AllowCustomRecipes", "bool", "true", "Access & Whitelist"),
 
     // ---- Misc ----
