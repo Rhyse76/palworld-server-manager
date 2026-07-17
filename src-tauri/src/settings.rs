@@ -247,11 +247,6 @@ pub fn active_game_id(app: &AppHandle) -> String {
     active_profile(app).map(|p| p.game).unwrap_or_else(default_game)
 }
 
-/// The active profile's automation settings.
-pub fn active_automation(app: &AppHandle) -> Automation {
-    active_profile(app).map(|p| p.automation).unwrap_or_default()
-}
-
 /// The install dir of the active profile.
 pub fn install_dir(app: &AppHandle) -> Result<PathBuf, String> {
     active_profile(app)

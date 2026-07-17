@@ -131,10 +131,10 @@ async fn install_server(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn start_server(app: AppHandle) -> Result<(), String> {
-    let install_dir = settings::install_dir(&app)?;
-    let extra_args = settings::active_profile(&app).map(|p| p.extra_launch_args).unwrap_or_default();
-    server::start(&install_dir, settings::hide_console(&app), &extra_args)?;
-    automation::set_supervise(&app, true);
+    let profile = settings::active_profile(&app).ok_or("No active server profile.")?;
+    let install_dir = std::path::PathBuf::from(&profile.install_dir);
+    server::start(&install_dir, settings::hide_console(&app), &profile.extra_launch_args)?;
+    automation::set_supervise(&app, &profile.id, true);
     logs::record(&app, "Server started.");
     discord::notify(&app, discord::Event::ServerStarted);
     Ok(())
@@ -143,7 +143,9 @@ fn start_server(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn stop_server(app: AppHandle) -> Result<(), String> {
     // Mark intent first so the crash watchdog doesn't fight the stop.
-    automation::set_supervise(&app, false);
+    if let Some(profile) = settings::active_profile(&app) {
+        automation::set_supervise(&app, &profile.id, false);
+    }
     server::stop()?;
     logs::record(&app, "Server stopped by user.");
     discord::notify(&app, discord::Event::ServerStopped);
@@ -154,23 +156,23 @@ fn stop_server(app: AppHandle) -> Result<(), String> {
 /// again. Runs in the background and returns immediately; the UI polls status.
 #[tauri::command]
 fn restart_server(app: AppHandle) -> Result<(), String> {
-    let install_dir = settings::install_dir(&app)?;
+    let profile = settings::active_profile(&app).ok_or("No active server profile.")?;
+    let install_dir = std::path::PathBuf::from(&profile.install_dir);
     // If it's not running, a "restart" is just a start.
     if !server::is_running() {
-        let extra_args = settings::active_profile(&app).map(|p| p.extra_launch_args).unwrap_or_default();
-        server::start(&install_dir, settings::hide_console(&app), &extra_args)?;
-        automation::set_supervise(&app, true);
+        server::start(&install_dir, settings::hide_console(&app), &profile.extra_launch_args)?;
+        automation::set_supervise(&app, &profile.id, true);
         logs::record(&app, "Server started.");
         discord::notify(&app, discord::Event::ServerStarted);
         return Ok(());
     }
     let hide = settings::hide_console(&app);
     // Suspend the crash watchdog so it doesn't race the intentional restart.
-    automation::set_supervise(&app, false);
+    automation::set_supervise(&app, &profile.id, false);
     let app2 = app.clone();
     std::thread::spawn(move || {
-        automation::run_restart(&app2, hide, 10, "Restart");
-        automation::set_supervise(&app2, true);
+        automation::run_restart_for(&app2, &profile, hide, 10, "Restart");
+        automation::set_supervise(&app2, &profile.id, true);
         discord::notify(&app2, discord::Event::ServerStarted);
     });
     Ok(())
@@ -291,7 +293,9 @@ async fn rest_save(app: AppHandle) -> Result<(), String> {
 async fn rest_shutdown(app: AppHandle, seconds: i64, message: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
     // A graceful shutdown from the UI is an intentional stop.
-    automation::set_supervise(&app, false);
+    if let Some(profile) = settings::active_profile(&app) {
+        automation::set_supervise(&app, &profile.id, false);
+    }
     game::live::shutdown(&dir, seconds, &message).await?;
     logs::record(&app, &format!("Graceful shutdown requested ({seconds}s)."));
     Ok(())

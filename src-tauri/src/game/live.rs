@@ -40,8 +40,10 @@ pub fn enable(dir: &Path) -> Result<rest::EnableResult, String> {
     }
 }
 
-pub async fn players(dir: &Path) -> Result<Vec<Player>, String> {
-    match active().spec().live_control {
+/// Explicit-game variant, for the automation scheduler acting on a profile that
+/// isn't necessarily the one currently active in the UI.
+pub async fn players_for(game: &dyn super::Game, dir: &Path) -> Result<Vec<Player>, String> {
+    match game.spec().live_control {
         LiveControl::RestApi => rest::players(dir).await,
         LiveControl::Rcon => {
             let d: PathBuf = dir.into();
@@ -51,8 +53,12 @@ pub async fn players(dir: &Path) -> Result<Vec<Player>, String> {
     }
 }
 
-pub async fn announce(dir: &Path, message: &str) -> Result<(), String> {
-    match active().spec().live_control {
+pub async fn players(dir: &Path) -> Result<Vec<Player>, String> {
+    players_for(active(), dir).await
+}
+
+pub async fn announce_for(game: &dyn super::Game, dir: &Path, message: &str) -> Result<(), String> {
+    match game.spec().live_control {
         LiveControl::RestApi => rest::announce(dir, message).await,
         LiveControl::Rcon => {
             let (d, m): (PathBuf, String) = (dir.into(), message.into());
@@ -60,6 +66,10 @@ pub async fn announce(dir: &Path, message: &str) -> Result<(), String> {
         }
         LiveControl::None => Err(no_live()),
     }
+}
+
+pub async fn announce(dir: &Path, message: &str) -> Result<(), String> {
+    announce_for(active(), dir, message).await
 }
 
 pub async fn kick(dir: &Path, user_id: &str, message: &str) -> Result<(), String> {
@@ -95,8 +105,8 @@ pub async fn unban(dir: &Path, user_id: &str) -> Result<(), String> {
     }
 }
 
-pub async fn save(dir: &Path) -> Result<(), String> {
-    match active().spec().live_control {
+pub async fn save_for(game: &dyn super::Game, dir: &Path) -> Result<(), String> {
+    match game.spec().live_control {
         LiveControl::RestApi => rest::save(dir).await,
         LiveControl::Rcon => {
             let d: PathBuf = dir.into();
@@ -106,8 +116,12 @@ pub async fn save(dir: &Path) -> Result<(), String> {
     }
 }
 
-pub async fn shutdown(dir: &Path, seconds: i64, message: &str) -> Result<(), String> {
-    match active().spec().live_control {
+pub async fn save(dir: &Path) -> Result<(), String> {
+    save_for(active(), dir).await
+}
+
+pub async fn shutdown_for(game: &dyn super::Game, dir: &Path, seconds: i64, message: &str) -> Result<(), String> {
+    match game.spec().live_control {
         LiveControl::RestApi => rest::shutdown(dir, seconds, message).await,
         LiveControl::Rcon => {
             let (d, m): (PathBuf, String) = (dir.into(), message.into());
@@ -115,4 +129,8 @@ pub async fn shutdown(dir: &Path, seconds: i64, message: &str) -> Result<(), Str
         }
         LiveControl::None => Err(no_live()),
     }
+}
+
+pub async fn shutdown(dir: &Path, seconds: i64, message: &str) -> Result<(), String> {
+    shutdown_for(active(), dir, seconds, message).await
 }

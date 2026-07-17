@@ -35,16 +35,21 @@ fn backups_root(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-/// The active profile's own backup folder — each profile gets its own subfolder
+/// A given profile's own backup folder — each profile gets its own subfolder
 /// (keyed by profile id, stable across renames) so different games' backups never
 /// mix and a restore can never land in the wrong game's save folder.
+pub fn backups_dir_for(app: &AppHandle, profile_id: &str) -> Result<PathBuf, String> {
+    let dir = backups_root(app)?.join(profile_id);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+/// The active profile's own backup folder — see `backups_dir_for`.
 pub fn backups_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let id = settings::active_profile(app)
         .map(|p| p.id)
         .ok_or("No active server profile.")?;
-    let dir = backups_root(app)?.join(id);
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir)
+    backups_dir_for(app, &id)
 }
 
 /// One-time migration: backups used to live loose directly under `backups/` shared
@@ -91,8 +96,39 @@ fn mirror_subfolder_name(profile_name: &str) -> String {
     if cleaned.is_empty() { "Server".into() } else { cleaned.to_string() }
 }
 
+fn savegames_dir_for(spec: &game::GameSpec, install_dir: &Path) -> PathBuf {
+    install_dir.join(spec.saves_rel)
+}
+
 fn savegames_dir(install_dir: &Path) -> PathBuf {
-    install_dir.join(game::active().spec().saves_rel)
+    savegames_dir_for(game::active().spec(), install_dir)
+}
+
+/// Create a backup for a specific profile, regardless of which one is active in the
+/// UI — used by the automation scheduler, which supervises every profile's server.
+/// Everything comes from `profile` directly; doesn't touch `game::active()`.
+pub fn create_for(app: &AppHandle, profile: &settings::ServerProfile) -> Result<String, String> {
+    let install_dir = Path::new(&profile.install_dir);
+    let spec = game::by_id_or_default(&profile.game).spec();
+    let src = savegames_dir_for(spec, install_dir);
+    if !src.exists() {
+        return Err("No SaveGames folder found yet — run the server once to create a world.".into());
+    }
+
+    let name = format!("save-{}.zip", timestamp());
+    let dest = backups_dir_for(app, &profile.id)?.join(&name);
+    zip_dir(&src, &dest).map_err(|e| format!("backup failed: {e}"))?;
+
+    let mirror = settings::load(app).backup_mirror_dir;
+    let mirror = mirror.trim();
+    if !mirror.is_empty() {
+        let mdir = std::path::Path::new(mirror).join(mirror_subfolder_name(&profile.name));
+        let _ = fs::create_dir_all(&mdir);
+        if mdir.is_dir() {
+            let _ = fs::copy(&dest, mdir.join(&name));
+        }
+    }
+    Ok(name)
 }
 
 pub fn create(app: &AppHandle, install_dir: &Path) -> Result<String, String> {
@@ -120,8 +156,17 @@ pub fn create(app: &AppHandle, install_dir: &Path) -> Result<String, String> {
     Ok(name)
 }
 
+pub fn list_for(app: &AppHandle, profile_id: &str) -> Result<Vec<BackupInfo>, String> {
+    let dir = backups_dir_for(app, profile_id)?;
+    list_dir(&dir)
+}
+
 pub fn list(app: &AppHandle) -> Result<Vec<BackupInfo>, String> {
     let dir = backups_dir(app)?;
+    list_dir(&dir)
+}
+
+fn list_dir(dir: &Path) -> Result<Vec<BackupInfo>, String> {
     let mut out = Vec::new();
     for entry in fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
         let path = entry.path();
@@ -168,6 +213,15 @@ pub fn restore(app: &AppHandle, install_dir: &Path, name: &str) -> Result<(), St
     let file = File::open(&zip_path).map_err(|e| e.to_string())?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
     archive.extract(&target).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn delete_for(app: &AppHandle, profile_id: &str, name: &str) -> Result<(), String> {
+    let safe = sanitize(name)?;
+    let path = backups_dir_for(app, profile_id)?.join(&safe);
+    if path.exists() {
+        fs::remove_file(&path).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 

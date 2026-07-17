@@ -117,6 +117,13 @@ pub fn all() -> Vec<&'static GameSpec> {
     IDS.iter().filter_map(|id| by_id(id).map(|g| g.spec())).collect()
 }
 
+/// Resolve a game adapter by id, falling back to Palworld if unknown — the same
+/// fallback `active()` uses, exposed for callers (e.g. the automation scheduler)
+/// resolving a specific profile's game rather than the globally active one.
+pub fn by_id_or_default(id: &str) -> &'static dyn Game {
+    by_id(id).unwrap_or_else(|| by_id("palworld").expect("palworld adapter is always registered"))
+}
+
 /// The active game's id. Global because `active()` is called from deep in the
 /// engine (no `AppHandle` in scope); the app keeps it in sync with the active
 /// profile via `set_active` on startup and whenever the active profile changes.
@@ -132,5 +139,5 @@ pub fn set_active(id: &str) {
 /// The currently active game (the active profile's game).
 pub fn active() -> &'static dyn Game {
     let id = ACTIVE_GAME.read().ok().map(|g| g.clone()).unwrap_or_default();
-    by_id(&id).unwrap_or_else(|| by_id("palworld").expect("palworld adapter is always registered"))
+    by_id_or_default(&id)
 }

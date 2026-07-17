@@ -27,17 +27,35 @@ const RED: u32 = 0xe5534b;
 const AMBER: u32 = 0xe3b341;
 const GRAY: u32 = 0x8b98a5;
 
-/// The active game's webhook URL, so Palworld/ARK/Enshrouded can post to different
-/// Discord channels. Empty if the user hasn't set one for the currently active game.
-pub fn active_webhook_url(cfg: &settings::Discord) -> String {
-    cfg.webhooks.get(crate::game::active().spec().id).cloned().unwrap_or_default()
+/// A given game's webhook URL, so Palworld/ARK/Enshrouded can post to different
+/// Discord channels. Empty if the user hasn't set one for that game.
+pub fn webhook_url_for(cfg: &settings::Discord, game_id: &str) -> String {
+    cfg.webhooks.get(game_id).cloned().unwrap_or_default()
 }
 
-/// Post a notification if Discord is enabled and the relevant toggle is on.
-/// Fire-and-forget: the HTTP POST runs on its own thread so callers never block.
+/// The active game's webhook URL — see `webhook_url_for`.
+pub fn active_webhook_url(cfg: &settings::Discord) -> String {
+    webhook_url_for(cfg, crate::game::active().spec().id)
+}
+
+/// Post a notification for a specific game/profile, regardless of which one is
+/// active in the UI — used by the automation scheduler, which supervises every
+/// profile's server. Fire-and-forget: the HTTP POST runs on its own thread.
+pub fn notify_for(app: &AppHandle, game_id: &str, event: Event) {
+    let cfg = settings::load(app).discord;
+    let webhook_url = webhook_url_for(&cfg, game_id);
+    notify_with(cfg, webhook_url, event);
+}
+
+/// Post a notification for the active game. Fire-and-forget: the HTTP POST runs on
+/// its own thread so callers never block.
 pub fn notify(app: &AppHandle, event: Event) {
     let cfg = settings::load(app).discord;
     let webhook_url = active_webhook_url(&cfg);
+    notify_with(cfg, webhook_url, event);
+}
+
+fn notify_with(cfg: settings::Discord, webhook_url: String, event: Event) {
     if !cfg.enabled || webhook_url.trim().is_empty() {
         return;
     }

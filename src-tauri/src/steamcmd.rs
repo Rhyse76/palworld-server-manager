@@ -67,6 +67,18 @@ pub async fn ensure_steamcmd(app: &AppHandle) -> Result<PathBuf, String> {
 /// again then downloads the server. We also treat "server ended up installed" as
 /// success even if SteamCMD reports a non-zero exit.
 pub fn run_update(app: &AppHandle, steamcmd: &PathBuf, install_dir: &PathBuf) -> Result<(), String> {
+    run_update_for(app, steamcmd, install_dir, crate::game::active().spec().steam_app_id)
+}
+
+/// Same as `run_update`, but for an explicit Steam app id — used by the automation
+/// scheduler's auto-update check, which acts on a specific profile regardless of
+/// which game is active in the UI.
+pub fn run_update_for(
+    app: &AppHandle,
+    steamcmd: &PathBuf,
+    install_dir: &PathBuf,
+    app_id: &str,
+) -> Result<(), String> {
     let mut last_err = String::new();
     for attempt in 1..=2 {
         if attempt == 2 {
@@ -75,7 +87,7 @@ pub fn run_update(app: &AppHandle, steamcmd: &PathBuf, install_dir: &PathBuf) ->
                 "SteamCMD updated itself — running the install again...",
             );
         }
-        match run_once(app, steamcmd, install_dir) {
+        match run_once(app, steamcmd, install_dir, app_id) {
             Ok(()) => return Ok(()),
             Err(e) => last_err = e,
         }
@@ -89,7 +101,7 @@ pub fn run_update(app: &AppHandle, steamcmd: &PathBuf, install_dir: &PathBuf) ->
 
 /// A single SteamCMD `app_update` run, streaming output as events. Blocks until
 /// SteamCMD exits, so callers run it off the async runtime.
-fn run_once(app: &AppHandle, steamcmd: &PathBuf, install_dir: &PathBuf) -> Result<(), String> {
+fn run_once(app: &AppHandle, steamcmd: &PathBuf, install_dir: &PathBuf, app_id: &str) -> Result<(), String> {
     fs::create_dir_all(install_dir).map_err(|e| e.to_string())?;
 
     let mut child = Command::new(steamcmd)
@@ -98,7 +110,7 @@ fn run_once(app: &AppHandle, steamcmd: &PathBuf, install_dir: &PathBuf) -> Resul
         .arg("+login")
         .arg("anonymous")
         .arg("+app_update")
-        .arg(crate::game::active().spec().steam_app_id)
+        .arg(app_id)
         .arg("validate")
         .arg("+quit")
         .stdout(Stdio::piped())
