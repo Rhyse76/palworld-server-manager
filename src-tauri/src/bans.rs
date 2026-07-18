@@ -9,11 +9,22 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde::Serialize;
 use walkdir::WalkDir;
 
 use crate::game;
 
-fn read_list(path: &Path) -> Vec<String> {
+/// One banned player: `id` is what `game::live::unban` needs; `label` is a
+/// human-readable name if the game's ban list includes one (empty otherwise, e.g.
+/// Palworld's `banlist.txt` is bare ids with no name).
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BanEntry {
+    pub id: String,
+    pub label: String,
+}
+
+fn read_lines(path: &Path) -> Vec<String> {
     fs::read_to_string(path)
         .unwrap_or_default()
         .lines()
@@ -44,12 +55,32 @@ fn find_palworld_banlist(install_dir: &Path) -> Option<PathBuf> {
 
 const ARK_BANLIST_REL: &str = "ShooterGame/Binaries/Win64/BanList.txt";
 
-pub fn list(install_dir: &Path) -> Result<Vec<String>, String> {
+pub fn list(install_dir: &Path) -> Result<Vec<BanEntry>, String> {
     if game::active().spec().id == "ark-sa" {
-        return Ok(read_list(&install_dir.join(ARK_BANLIST_REL)));
+        // Confirmed live (2026-07): each line is `<id>,<name>,<flag>` (comma-
+        // separated, e.g. "0002860bec...,Rhyse,0"), not a bare id like the
+        // exclusive-join/admin lists — split out the id (for unban) and name
+        // (so the list stays readable) separately.
+        let entries = read_lines(&install_dir.join(ARK_BANLIST_REL))
+            .into_iter()
+            .filter_map(|l| {
+                let mut parts = l.split(',').map(str::trim);
+                let id = parts.next()?.to_string();
+                if id.is_empty() {
+                    return None;
+                }
+                let label = parts.next().unwrap_or("").to_string();
+                Some(BanEntry { id, label })
+            })
+            .collect();
+        return Ok(entries);
     }
-    match find_palworld_banlist(install_dir) {
-        Some(path) => Ok(read_list(&path)),
-        None => Ok(Vec::new()),
-    }
+    let path = match find_palworld_banlist(install_dir) {
+        Some(p) => p,
+        None => return Ok(Vec::new()),
+    };
+    Ok(read_lines(&path)
+        .into_iter()
+        .map(|id| BanEntry { id, label: String::new() })
+        .collect())
 }

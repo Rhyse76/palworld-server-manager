@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { api, type HostStats, type Overview, type Player } from "../api";
+import { api, type BanEntry, type HostStats, type Overview, type Player } from "../api";
 
 interface Props {
   notify: (msg: string, error?: boolean) => void;
@@ -20,7 +20,7 @@ export default function DashboardPage({ notify }: Props) {
   const [loading, setLoading] = useState(true);
   const [broadcast, setBroadcast] = useState("");
   const [history, setHistory] = useState<{ players: number; fps: number }[]>([]);
-  const [bans, setBans] = useState<string[]>([]);
+  const [bans, setBans] = useState<BanEntry[]>([]);
   const [unbanId, setUnbanId] = useState("");
   // Live-control mechanism of the active game: "rest" (Palworld), "rcon" (ARK), or "none".
   const [live, setLive] = useState<"rest" | "rcon" | "none" | null>(null);
@@ -345,11 +345,22 @@ export default function DashboardPage({ notify }: Props) {
           ) : (
             <table className="table">
               <tbody>
-                {bans.map((id) => (
-                  <tr key={id}>
-                    <td style={{ fontFamily: "monospace" }}>{id}</td>
+                {bans.map((b) => (
+                  <tr key={b.id}>
+                    <td>
+                      {b.label && <div>{b.label}</div>}
+                      <span
+                        style={{
+                          fontFamily: "monospace",
+                          fontSize: b.label ? 12 : undefined,
+                          color: b.label ? "var(--text-dim)" : undefined,
+                        }}
+                      >
+                        {b.id}
+                      </span>
+                    </td>
                     <td style={{ textAlign: "right" }}>
-                      <button className="btn" onClick={() => unban(id)}>
+                      <button className="btn" onClick={() => unban(b.id)}>
                         Unban
                       </button>
                     </td>

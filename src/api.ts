@@ -131,6 +131,12 @@ export interface BackupInfo {
   modified: number;
 }
 
+export interface BanEntry {
+  id: string;
+  /** Human-readable name if the game's ban list includes one, empty otherwise. */
+  label: string;
+}
+
 export interface EnableResult {
   port: number;
   adminPassword: string;
@@ -170,7 +176,7 @@ export const api = {
   restKick: (userid: string, message: string) => invoke<void>("rest_kick", { userid, message }),
   restBan: (userid: string, message: string) => invoke<void>("rest_ban", { userid, message }),
   restUnban: (userid: string) => invoke<void>("rest_unban", { userid }),
-  bansList: () => invoke<string[]>("bans_list"),
+  bansList: () => invoke<BanEntry[]>("bans_list"),
 
   // ARK: SA player access lists
   arkExclusiveJoinList: () => invoke<string[]>("ark_exclusive_join_list"),

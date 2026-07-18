@@ -255,7 +255,7 @@ async fn rest_unban(app: AppHandle, userid: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn bans_list(app: AppHandle) -> Result<Vec<String>, String> {
+fn bans_list(app: AppHandle) -> Result<Vec<bans::BanEntry>, String> {
     bans::list(&settings::install_dir(&app)?)
 }
 

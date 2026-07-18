@@ -250,7 +250,7 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
           style={{ width: 200, maxWidth: "100%", height: "auto", display: "block", margin: "0 0 10px" }}
         />
         <p style={{ margin: "0 0 6px" }}>
-          <strong>RhyseGaming Server Manager</strong> · v0.4.9
+          <strong>RhyseGaming Server Manager</strong> · v0.4.10
         </p>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
           An unofficial, community-made tool for running dedicated servers for Palworld,
