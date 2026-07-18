@@ -34,7 +34,10 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "signCommand": "artifact-signing-cli -e https://cus.codesigning.azure.net -a Server-Manager -c Server-Manager %1"
+    }
   },
   "plugins": {
     "updater": {

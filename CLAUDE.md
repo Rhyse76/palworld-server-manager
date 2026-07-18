@@ -167,12 +167,18 @@ Every release MUST be **signed** and ship a matching `latest.json`, or self-upda
    (`C:\Users\Rhyse\rhysegaming-site`, not this one), `servermanager/index.html`'s
    `softwareVersion` JSON-LD field and the `vX.Y.Z` text near the download button. Easy to
    forget since it's outside this repo and easy to open — has been missed more than once.
-2. **Signed build** (private key lives OUTSIDE the repo — path is in `CLAUDE.local.md`'s
-   secrets section; empty password; pubkey is in `tauri.conf.json > plugins.updater`):
+2. **Signed build** (updater key lives OUTSIDE the repo — path is in `CLAUDE.local.md`'s
+   secrets section; empty password; pubkey is in `tauri.conf.json > plugins.updater`).
+   **Must run in Git Bash, not PowerShell** — PowerShell's `$env:VAR = ""` deletes the
+   variable instead of setting it empty, which makes the updater-key step fall back to an
+   interactive password prompt and hang forever in a non-interactive shell:
    ```
    TAURI_SIGNING_PRIVATE_KEY="$(cat <path-from-CLAUDE.local.md>)" \
    TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" \
    CURSEFORGE_API_KEY="$(cat <curseforge-key-path-from-CLAUDE.local.md>)" \
+   AZURE_CLIENT_ID="$(cat <path-from-CLAUDE.local.md>)" \
+   AZURE_CLIENT_SECRET="$(cat <path-from-CLAUDE.local.md>)" \
+   AZURE_TENANT_ID="$(cat <path-from-CLAUDE.local.md>)" \
    npm run tauri build
    ```
    Produces `…-setup.exe` and `…-setup.exe.sig` under `target/release/bundle/nsis/`.
@@ -182,6 +188,19 @@ Every release MUST be **signed** and ship a matching `latest.json`, or self-upda
    their own key, which always takes priority). Omitting this var still produces a
    working build — search just falls back to "no key configured" until a user sets
    their own.
+
+   **Authenticode signing (2026-07, via Azure Artifact Signing)**: `tauri.conf.json`'s
+   `bundle.windows.signCommand` runs `artifact-signing-cli` (installed via
+   `cargo install artifact-signing-cli`) against the `Server-Manager` Artifact Signing
+   Account + `PublicTrust` Certificate Profile, using the `AZURE_CLIENT_ID`/
+   `AZURE_CLIENT_SECRET`/`AZURE_TENANT_ID` env vars above (a dedicated App Registration,
+   `RhyseGamingServerManager-CodeSigning`, scoped to just the `Artifact Signing
+   Certificate Profile Signer` role on that one account — not the user's own login).
+   This signs the exe, DLLs, MSI, and NSIS installer automatically as part of
+   `npm run tauri build` — verify with `signtool verify /pa /v <path>`. Separate from
+   (and in addition to) the updater `.sig` above — one is Authenticode (stops
+   SmartScreen's unrecognized-publisher warning), the other is Tauri's own
+   updater-integrity signature.
 3. Create the GitHub release `vX.Y.Z`, upload the installer as `RhyseGamingServerManager-Setup.exe`,
    and upload a `latest.json` asset:
    `{"version":"X.Y.Z","notes":"…","pub_date":"<ISO>","platforms":{"windows-x86_64":
