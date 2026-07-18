@@ -23,6 +23,7 @@ const COMMON_FLAGS: Record<string, { flag: string; desc: string }[]> = {
     { flag: "-useperfthreads", desc: "Improves CPU performance (Windows)." },
     { flag: "-NoAsyncLoadingThread", desc: "Loads assets synchronously — official perf tip." },
     { flag: "-UseMultithreadForDS", desc: "Enables multithreading for the dedicated server." },
+    { flag: "-publiclobby", desc: "Required for the server to register on the in-game community server list — direct connect works without it, but it won't be listed." },
   ],
   "ark-sa": [
     { flag: "-NoBattlEye", desc: "Disables BattlEye anti-cheat." },

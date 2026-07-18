@@ -7,7 +7,7 @@ use std::time::Duration;
 use serde_json::json;
 use tauri::AppHandle;
 
-use crate::{rest, server, settings};
+use crate::{server, settings};
 
 /// Notification categories, mapped to a title/color and the settings toggle that
 /// gates them.
@@ -129,9 +129,11 @@ pub fn start_player_watch(app: AppHandle) {
                 Ok(d) => d,
                 Err(_) => continue,
             };
-            let players = match tauri::async_runtime::block_on(rest::players(&dir)) {
+            let players = match tauri::async_runtime::block_on(crate::game::live::players(&dir)) {
                 Ok(p) => p,
-                Err(_) => continue, // REST not ready yet
+                // Not ready yet (REST/RCON), or this game has no live-control protocol
+                // at all (e.g. Enshrouded) — either way, nothing to report this tick.
+                Err(_) => continue,
             };
             let current: HashSet<String> = players
                 .iter()

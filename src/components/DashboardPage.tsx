@@ -88,6 +88,7 @@ export default function DashboardPage({ notify }: Props) {
       } else if (live === "rcon") {
         // No REST metrics for RCON games — just the player list + actions.
         setPlayers(await api.restPlayers());
+        loadBans();
       } else {
         // No live-control protocol (e.g. Enshrouded) — nothing to fetch, the
         // Dashboard just shows host performance below.
@@ -324,13 +325,13 @@ export default function DashboardPage({ notify }: Props) {
         </div>
       )}
 
-      {live === "rest" && (
+      {(live === "rest" || live === "rcon") && (
         <div className="card">
           <h2>Banned players ({bans.length})</h2>
           <div className="row" style={{ marginBottom: bans.length ? 14 : 0 }}>
             <input
               className="search"
-              placeholder="Unban by user id (e.g. steam_7656…)"
+              placeholder={live === "rest" ? "Unban by user id (e.g. steam_7656…)" : "Unban by EOS id"}
               value={unbanId}
               onChange={(e) => setUnbanId(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && unban(unbanId)}

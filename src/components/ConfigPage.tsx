@@ -8,12 +8,15 @@ interface Props {
   status: StatusInfo | null;
 }
 
-// ARK: SA keeps its loaded settings in memory and rewrites GameUserSettings.ini/
-// Game.ini with that in-memory snapshot when the server shuts down — silently
-// discarding any config edit made while it was running (community-confirmed
-// behavior, not an app bug). Safe order: stop the server, edit, then start again.
-const ARK_LIVE_EDIT_WARNING =
-  "The server is running. ARK: Survival Ascended rewrites its config file from memory when it shuts down, which silently discards any changes made here. Stop the server first, make your changes, then start it again.";
+// Confirmed live (2026-07) on both ARK: SA and Palworld: the server keeps its
+// loaded settings in memory and rewrites its config file from that snapshot when
+// it shuts down — silently discarding any config edit made while it was running
+// (game behavior, not an app bug). Safe order: stop the server, edit, then start
+// again. Not yet confirmed either way for Enshrouded, so it's excluded below
+// rather than assumed affected.
+const GAMES_WITH_LIVE_EDIT_RISK = ["ark-sa", "palworld"];
+const LIVE_EDIT_WARNING =
+  "The server is running. This game rewrites its config file from memory when it shuts down, which silently discards any changes made here. Stop the server first, make your changes, then start it again.";
 
 export default function ConfigPage({ notify, status }: Props) {
   const [fields, setFields] = useState<ConfigField[]>([]);
@@ -23,7 +26,7 @@ export default function ConfigPage({ notify, status }: Props) {
   const [saving, setSaving] = useState(false);
   const [configFile, setConfigFile] = useState("the config file");
   const [gameId, setGameId] = useState("server");
-  const arkLiveEditRisk = gameId === "ark-sa" && !!status?.running;
+  const liveEditRisk = GAMES_WITH_LIVE_EDIT_RISK.includes(gameId) && !!status?.running;
 
   useEffect(() => {
     api.gameInfo().then((g) => {
@@ -180,16 +183,16 @@ export default function ConfigPage({ notify, status }: Props) {
         <button
           className="btn primary"
           onClick={save}
-          disabled={saving || !fields.length || arkLiveEditRisk}
-          title={arkLiveEditRisk ? ARK_LIVE_EDIT_WARNING : undefined}
+          disabled={saving || !fields.length || liveEditRisk}
+          title={liveEditRisk ? LIVE_EDIT_WARNING : undefined}
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
       </div>
 
-      {arkLiveEditRisk && (
+      {liveEditRisk && (
         <div className="card" style={{ borderColor: "var(--warn)" }}>
-          <p style={{ margin: 0 }}>⚠️ {ARK_LIVE_EDIT_WARNING}</p>
+          <p style={{ margin: 0 }}>⚠️ {LIVE_EDIT_WARNING}</p>
         </div>
       )}
 
