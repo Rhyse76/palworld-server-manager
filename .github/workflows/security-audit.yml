@@ -1,0 +1,47 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/Cargo.lock"
+      - "src-tauri/deny.toml"
+      - ".github/workflows/security-audit.yml"
+  pull_request:
+    paths:
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/Cargo.lock"
+      - "src-tauri/deny.toml"
+  schedule:
+    # Weekly, so new advisories get caught even when dependencies haven't
+    # changed (RustSec adds new advisories against already-pinned versions).
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo-audit/cargo-deny binaries
+        id: tool-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/cargo-audit*
+            ~/.cargo/bin/cargo-deny*
+          key: security-tools-cargo-audit0.22-cargo-deny0.20
+
+      - name: Install cargo-audit and cargo-deny
+        if: steps.tool-cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit cargo-deny
+
+      - name: cargo audit
+        working-directory: src-tauri
+        run: cargo audit
+
+      - name: cargo deny check
+        working-directory: src-tauri
+        run: cargo deny check
