@@ -91,19 +91,32 @@ fn apply_impl(
     let was_running = server::is_running_for(spec);
 
     if was_running {
-        let _ = tauri::async_runtime::block_on(crate::game::live::announce_for(
-            game,
-            install_dir,
-            "Server is updating and will restart shortly.",
-        ));
-        let _ = tauri::async_runtime::block_on(crate::game::live::save_for(game, install_dir));
-        let _ = server::stop_for(spec);
-        for _ in 0..30 {
-            if !server::is_running_for(spec) {
-                break;
+        let notice = "Server is updating and will restart shortly.";
+        let _ = tauri::async_runtime::block_on(crate::game::live::announce_for(game, install_dir, notice));
+
+        // Graceful shutdown (ARK: SaveWorld + DoExit; Palworld: REST /shutdown) instead of
+        // an immediate force-kill. A bare "save" RCON/REST call only acknowledges that a save
+        // started, not that it finished writing to disk — killing the process right after,
+        // with no wait, can land mid-write and corrupt the save (hit this for real: an ARK
+        // SQLite save was corrupted this way by this exact code path, see CLAUDE.local.md).
+        // Same pattern automation::run_restart_for already uses for scheduled restarts.
+        let shutdown_ok =
+            tauri::async_runtime::block_on(crate::game::live::shutdown_for(game, install_dir, 10, notice))
+                .is_ok();
+
+        // If the graceful shutdown was accepted, wait for the process to exit on its own
+        // (up to ~2 min) before force-stopping. Otherwise (no live control) skip straight
+        // to force-stop.
+        if shutdown_ok {
+            for _ in 0..40 {
+                if !server::is_running_for(spec) {
+                    break;
+                }
+                std::thread::sleep(Duration::from_secs(3));
             }
-            std::thread::sleep(Duration::from_secs(2));
         }
+        let _ = server::stop_for(spec); // safety net / primary when live control is off
+        std::thread::sleep(Duration::from_secs(2));
     }
 
     let steamcmd = tauri::async_runtime::block_on(steamcmd::ensure_steamcmd(app))?;
