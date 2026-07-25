@@ -86,7 +86,41 @@ fn extract_option_settings(text: &str) -> Option<String> {
 /// the first comma survived as a valid `key=value` pair (the rest had no `=`
 /// sign, so `parse_fields` dropped them), which looked like the value getting
 /// truncated on save when the real bug was here, in parsing.
+///
+/// Falls back to quote-only splitting (no paren tracking) if the blob's
+/// parentheses aren't balanced. This matters for files already carrying
+/// corrupted data from the old bug: a value like `CrossplayPlatforms=(Steam`
+/// with no closing `)` would otherwise make the depth counter never return to
+/// zero, so every comma for the *rest of the blob* would look like it's still
+/// "inside" that one broken value -- swallowing every later setting into one
+/// giant field instead of containing the damage to just the one already-bad
+/// value.
 fn split_top_level(blob: &str) -> Vec<String> {
+    split_on_commas(blob, parens_balanced(blob))
+}
+
+/// Quick pre-check: are `(`/`)` balanced outside of quoted strings? An extra
+/// unmatched `)` (depth going negative) also counts as unbalanced.
+fn parens_balanced(blob: &str) -> bool {
+    let mut in_quotes = false;
+    let mut depth: i32 = 0;
+    for c in blob.chars() {
+        match c {
+            '"' => in_quotes = !in_quotes,
+            '(' if !in_quotes => depth += 1,
+            ')' if !in_quotes => {
+                depth -= 1;
+                if depth < 0 {
+                    return false;
+                }
+            }
+            _ => {}
+        }
+    }
+    depth == 0
+}
+
+fn split_on_commas(blob: &str, track_parens: bool) -> Vec<String> {
     let mut parts = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
@@ -97,11 +131,11 @@ fn split_top_level(blob: &str) -> Vec<String> {
                 in_quotes = !in_quotes;
                 current.push(c);
             }
-            '(' if !in_quotes => {
+            '(' if !in_quotes && track_parens => {
                 depth += 1;
                 current.push(c);
             }
-            ')' if !in_quotes => {
+            ')' if !in_quotes && track_parens => {
                 depth -= 1;
                 current.push(c);
             }
@@ -214,5 +248,28 @@ mod tests {
 
         let out = serialize_fields(&fields);
         assert!(out.contains("CrossplayPlatforms=(Steam,Xbox,PS5)"));
+    }
+
+    #[test]
+    fn an_unclosed_paren_from_old_corrupted_data_does_not_swallow_the_rest_of_the_blob() {
+        // Real bug hit live, one layer past the fix above: a file already carrying
+        // an old truncated value ("CrossplayPlatforms=(Steam" with no closing ")")
+        // made the depth counter never return to zero, so every later setting got
+        // pulled into that one field instead of parsing normally. The parser should
+        // detect the imbalance and fall back to quote-only splitting so the damage
+        // stays contained to just the one already-bad field.
+        let text = format!(
+            "{HEADER}\nOptionSettings=(Difficulty=None,CrossplayPlatforms=(Steam,\
+             bIsPvP=False,PublicPort=8211)\n"
+        );
+        let blob = extract_option_settings(&text).unwrap();
+        let fields = parse_fields(&blob);
+        assert_eq!(fields.len(), 4);
+        assert_eq!(fields[1].key, "CrossplayPlatforms");
+        assert_eq!(fields[1].value, "(Steam");
+        assert_eq!(fields[2].key, "bIsPvP");
+        assert_eq!(fields[2].kind, "bool");
+        assert_eq!(fields[3].key, "PublicPort");
+        assert_eq!(fields[3].value, "8211");
     }
 }
