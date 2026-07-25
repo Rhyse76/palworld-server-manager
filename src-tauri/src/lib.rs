@@ -298,12 +298,16 @@ async fn rest_save(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 async fn rest_shutdown(app: AppHandle, seconds: i64, message: String) -> Result<(), String> {
     let dir = settings::install_dir(&app)?;
+    let profile = settings::active_profile(&app);
     // A graceful shutdown from the UI is an intentional stop.
-    if let Some(profile) = settings::active_profile(&app) {
-        automation::set_supervise(&app, &profile.id, false);
+    if let Some(p) = &profile {
+        automation::set_supervise(&app, &p.id, false);
     }
     game::live::shutdown(&dir, seconds, &message).await?;
     logs::record(&app, &format!("Graceful shutdown requested ({seconds}s)."));
+    if let Some(p) = &profile {
+        discord::notify_for(&app, &p.game, discord::Event::ServerStopped);
+    }
     Ok(())
 }
 
