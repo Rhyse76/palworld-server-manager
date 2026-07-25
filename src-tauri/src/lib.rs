@@ -508,6 +508,11 @@ fn network_reachability(app: AppHandle) -> network::Reachability {
     network::reachability(&app)
 }
 
+#[tauri::command]
+fn network_add_firewall_rule(app: AppHandle) -> Result<String, String> {
+    network::add_firewall_rule(&app)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -576,6 +581,7 @@ pub fn run() {
             network_forward,
             network_unforward,
             network_reachability,
+            network_add_firewall_rule,
             inspect_save,
             mods_list,
             mod_set_enabled,

@@ -5,11 +5,13 @@
 //! friends connect to and what must be port-forwarded.
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddrV4, UdpSocket};
+use std::process::Command;
 use std::time::Duration;
 
 use serde::Serialize;
 use tauri::AppHandle;
 
+use crate::util::CommandExt;
 use crate::{config, game, settings};
 
 #[derive(Serialize)]
@@ -220,4 +222,37 @@ pub fn unforward(app: &AppHandle) -> Result<String, String> {
         .remove_port(igd::PortMappingProtocol::UDP, port)
         .map_err(|e| format!("Could not remove the mapping ({e})."))?;
     Ok(format!("Closed UDP port {port}."))
+}
+
+/// Add a Windows Firewall inbound-allow rule for the active game's UDP port.
+///
+/// A router port-forward and a local firewall rule are two separate things that
+/// both need to allow the connection — UPnP above handles the router side, this
+/// handles the PC side. Firewall rule changes need admin rights, which this app
+/// doesn't run with by default, so this elevates just this one action (a single
+/// UAC consent prompt) via `Start-Process -Verb RunAs` rather than the whole app.
+/// The rule name/port are fixed, known values from `GameSpec` (never user input),
+/// so passing them through PowerShell's array-literal `-ArgumentList` is safe.
+pub fn add_firewall_rule(app: &AppHandle) -> Result<String, String> {
+    let port = game_port(app);
+    let spec = game::active().spec();
+    let rule_name = format!("RhyseGaming Server Manager - {} (UDP {port})", spec.display_name);
+
+    let ps_script = format!(
+        "$p = Start-Process netsh -ArgumentList 'advfirewall','firewall','add','rule',\
+         'name={rule_name}','dir=in','action=allow','protocol=UDP','localport={port}' \
+         -Verb RunAs -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode"
+    );
+
+    let status = Command::new("powershell")
+        .args(["-NoProfile", "-Command", &ps_script])
+        .hidden()
+        .status()
+        .map_err(|e| format!("Failed to run PowerShell: {e}"))?;
+
+    if status.success() {
+        Ok(format!("Added a Windows Firewall rule allowing UDP {port} in (\"{rule_name}\")."))
+    } else {
+        Err("Firewall rule wasn't added — the admin prompt may have been cancelled, or it failed.".into())
+    }
 }

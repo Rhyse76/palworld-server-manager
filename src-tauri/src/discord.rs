@@ -1,13 +1,14 @@
 //! Discord webhook notifications: server up/down/crash, player join/leave, and
 //! backup events, posted as embeds to a user-configured webhook URL.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::path::Path;
 use std::time::Duration;
 
 use serde_json::json;
 use tauri::AppHandle;
 
-use crate::{server, settings};
+use crate::{game, server, settings};
 
 /// Notification categories, mapped to a title/color and the settings toggle that
 /// gates them.
@@ -15,6 +16,7 @@ pub enum Event {
     ServerStarted,
     ServerStopped,
     Crashed,
+    CrashLoopStopped(String),
     Restarting(String),
     BackupCreated(String),
     PlayerJoined(String),
@@ -69,6 +71,12 @@ fn notify_with(cfg: settings::Discord, webhook_url: String, event: Event) {
             String::new(),
             RED,
         ),
+        Event::CrashLoopStopped(msg) => (
+            cfg.notify_server,
+            "🛑 Crash watchdog gave up".into(),
+            msg.clone(),
+            RED,
+        ),
         Event::Restarting(msg) => (cfg.notify_server, "🔄 Server restarting".into(), msg.clone(), AMBER),
         Event::BackupCreated(name) => (
             cfg.notify_backups,
@@ -108,49 +116,65 @@ fn notify_with(cfg: settings::Discord, webhook_url: String, event: Event) {
     });
 }
 
-/// Background poller that watches the live player list and posts join/leave
-/// events. Runs only while the server is up and player notifications are on.
+/// One profile's last-seen player set, so join/leave is detected per profile.
+#[derive(Default)]
+struct WatchState {
+    players: HashSet<String>,
+    primed: bool,
+}
+
+/// Background poller that watches every running profile's live player list and
+/// posts join/leave events to that profile's own webhook — not just whichever
+/// profile is active in the UI, same "supervise every running server" principle
+/// `automation.rs`'s scheduler already uses. Runs its own faster-than-the-60s-
+/// automation-tick interval (20s) since join/leave benefits from being timely.
 pub fn start_player_watch(app: AppHandle) {
     std::thread::spawn(move || {
-        let mut last: HashSet<String> = HashSet::new();
-        let mut primed = false;
+        let mut last: HashMap<String, WatchState> = HashMap::new();
 
         loop {
             std::thread::sleep(Duration::from_secs(20));
 
-            let cfg = settings::load(&app).discord;
-            if !cfg.enabled || !cfg.notify_players || !server::is_running() {
+            let cfg = settings::load(&app);
+            if !cfg.discord.enabled || !cfg.discord.notify_players {
                 last.clear();
-                primed = false;
                 continue;
             }
 
-            let dir = match settings::install_dir(&app) {
-                Ok(d) => d,
-                Err(_) => continue,
-            };
-            let players = match tauri::async_runtime::block_on(crate::game::live::players(&dir)) {
-                Ok(p) => p,
-                // Not ready yet (REST/RCON), or this game has no live-control protocol
-                // at all (e.g. Enshrouded) — either way, nothing to report this tick.
-                Err(_) => continue,
-            };
-            let current: HashSet<String> = players
-                .iter()
-                .map(|p| if p.name.is_empty() { p.player_id.clone() } else { p.name.clone() })
-                .filter(|s| !s.is_empty())
-                .collect();
+            for profile in &cfg.profiles {
+                let g = game::by_id_or_default(&profile.game);
+                let spec = g.spec();
+                let install_dir = Path::new(&profile.install_dir);
 
-            if primed {
-                for joined in current.difference(&last) {
-                    notify(&app, Event::PlayerJoined(joined.clone()));
+                if !server::is_running_for(spec) {
+                    last.remove(&profile.id);
+                    continue;
                 }
-                for left in last.difference(&current) {
-                    notify(&app, Event::PlayerLeft(left.clone()));
+
+                let players = match tauri::async_runtime::block_on(crate::game::live::players_for(g, install_dir)) {
+                    Ok(p) => p,
+                    // Not ready yet (REST/RCON), or this game has no live-control protocol
+                    // at all (e.g. Enshrouded) — either way, nothing to report this tick.
+                    Err(_) => continue,
+                };
+                let current: HashSet<String> = players
+                    .iter()
+                    .map(|p| if p.name.is_empty() { p.player_id.clone() } else { p.name.clone() })
+                    .filter(|s| !s.is_empty())
+                    .collect();
+
+                let state = last.entry(profile.id.clone()).or_default();
+                if state.primed {
+                    for joined in current.difference(&state.players) {
+                        notify_for(&app, &profile.game, Event::PlayerJoined(joined.clone()));
+                    }
+                    for left in state.players.difference(&current) {
+                        notify_for(&app, &profile.game, Event::PlayerLeft(left.clone()));
+                    }
                 }
+                state.players = current;
+                state.primed = true;
             }
-            last = current;
-            primed = true;
         }
     });
 }

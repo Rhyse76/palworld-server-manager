@@ -21,6 +21,7 @@ export default function ConnectPage({ notify, gameName }: Props) {
   const [info, setInfo] = useState<NetworkInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [firewallBusy, setFirewallBusy] = useState(false);
   const [reach, setReach] = useState<Reachability | null>(null);
   const [testing, setTesting] = useState(false);
 
@@ -73,6 +74,17 @@ export default function ConnectPage({ notify, gameName }: Props) {
       notify(String(e), true);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function allowThroughFirewall() {
+    setFirewallBusy(true);
+    try {
+      notify(await api.networkAddFirewallRule());
+    } catch (e) {
+      notify(String(e), true);
+    } finally {
+      setFirewallBusy(false);
     }
   }
 
@@ -184,6 +196,16 @@ export default function ConnectPage({ notify, gameName }: Props) {
             </button>
             <button className="btn" onClick={() => forward(false)} disabled={busy}>
               Close port
+            </button>
+          </div>
+          <p style={{ color: "var(--text-dim)", marginTop: 16 }}>
+            A router forward and your PC's own firewall are two separate things — both need to
+            allow the connection. If UPnP above succeeded but friends still can't connect, this
+            is the other half:
+          </p>
+          <div className="row">
+            <button className="btn" onClick={allowThroughFirewall} disabled={firewallBusy}>
+              {firewallBusy ? "Working…" : "Allow through Windows Firewall"}
             </button>
           </div>
           <div className="note" style={{ marginTop: 16 }}>

@@ -23,6 +23,14 @@ use settings::{AppConfig, ServerProfile};
 
 const TICK: Duration = Duration::from_secs(60);
 
+/// Crash watchdog: give up auto-restarting a profile after this many restarts
+/// within this time window, rather than retrying forever (e.g. a startup-crash
+/// condition, like the SQLite save corruption incident this was added for, would
+/// otherwise loop every tick indefinitely since the underlying cause never
+/// resolves itself).
+const CRASH_RESTART_LIMIT: u32 = 5;
+const CRASH_WINDOW: Duration = Duration::from_secs(15 * 60);
+
 /// One profile's scheduler bookkeeping: when actions last ran, and whether we
 /// expect its server to be up (so the watchdog knows a crash from an intentional
 /// stop).
@@ -33,6 +41,8 @@ struct ProfileTimers {
     supervise: bool,
     announce_last: HashMap<String, u64>,
     last_update_check: u64,
+    crash_count: u32,
+    crash_window_start: u64,
 }
 
 #[derive(Default)]
@@ -200,16 +210,37 @@ fn tick_profile(app: &AppHandle, cfg: &AppConfig, profile: &ServerProfile, t: u6
         }
     }
 
-    // Crash watchdog: we expected it up, but it isn't.
+    // Crash watchdog: we expected it up, but it isn't. Capped — see CRASH_RESTART_LIMIT.
     if a.auto_restart_on_crash {
         let supervise = state.with_timers(&profile.id, |timers| timers.supervise);
         if supervise && !server::is_running_for(spec) {
-            state.with_timers(&profile.id, |timers| timers.last_restart = t);
-            log("Server stopped unexpectedly — auto-restarting…");
-            discord::notify_for(app, &profile.game, discord::Event::Crashed);
-            match server::start_for(game, install_dir, cfg.hide_server_console, &profile.extra_launch_args) {
-                Ok(()) => log("Crash watchdog: server restarted."),
-                Err(e) => log(&format!("Crash watchdog: restart failed: {e}")),
+            let gave_up = state.with_timers(&profile.id, |timers| {
+                if t.saturating_sub(timers.crash_window_start) > CRASH_WINDOW.as_secs() {
+                    timers.crash_window_start = t;
+                    timers.crash_count = 0;
+                }
+                timers.crash_count += 1;
+                timers.crash_count > CRASH_RESTART_LIMIT
+            });
+
+            if gave_up {
+                state.with_timers(&profile.id, |timers| timers.supervise = false);
+                let msg = format!(
+                    "Gave up after {CRASH_RESTART_LIMIT} restarts within {} minutes — the server \
+                     keeps failing to stay up, so auto-restart has stopped. Check what's wrong, \
+                     then start it manually.",
+                    CRASH_WINDOW.as_secs() / 60
+                );
+                log(&format!("Crash watchdog: {msg}"));
+                discord::notify_for(app, &profile.game, discord::Event::CrashLoopStopped(msg));
+            } else {
+                state.with_timers(&profile.id, |timers| timers.last_restart = t);
+                log("Server stopped unexpectedly — auto-restarting…");
+                discord::notify_for(app, &profile.game, discord::Event::Crashed);
+                match server::start_for(game, install_dir, cfg.hide_server_console, &profile.extra_launch_args) {
+                    Ok(()) => log("Crash watchdog: server restarted."),
+                    Err(e) => log(&format!("Crash watchdog: restart failed: {e}")),
+                }
             }
         }
     }

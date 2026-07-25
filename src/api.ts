@@ -241,6 +241,7 @@ export const api = {
   networkForward: () => invoke<string>("network_forward"),
   networkUnforward: () => invoke<string>("network_unforward"),
   networkReachability: () => invoke<Reachability>("network_reachability"),
+  networkAddFirewallRule: () => invoke<string>("network_add_firewall_rule"),
 };
 
 export interface NetworkInfo {
