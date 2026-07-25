@@ -233,16 +233,6 @@ const ENTRIES: &[Entry] = &[
     ("gus", "[ServerSettings]", "DisableBattleEye", "bool", "true", "Network & Console"),
     ("gus", "[ServerSettings]", "RCONEnabled", "bool", "true", "Network & Console"),
     ("gus", "[ServerSettings]", "EnableCrossPlay", "bool", "true", "Crossplay & Platform"),
-    // Not in the reference file (this server doesn't restrict platforms), but this is
-    // the exact key from the original bug report: real format is an unquoted
-    // parenthesized list, e.g. "(Steam,Xbox,PS5)" -- confirmed real platforms are
-    // Steam/PC, Xbox Series S/X, and PS5 (no macOS client exists for this game; an
-    // earlier draft of this comment repeated an unverified "Mac" entry from the bug
-    // report as-is, which was wrong -- don't trust example values without checking).
-    // "enum" kind is deliberate here (not "string", which would wrongly wrap it in
-    // quotes on write for a brand-new key); empty default means "no restriction"
-    // until the user sets one.
-    ("gus", "[ServerSettings]", "CrossplayPlatforms", "enum", "", "Crossplay & Platform"),
     ("gus", "[ServerSettings]", "ConsoleAccess", "bool", "true", "Network & Console"),
     ("gus", "[ServerSettings]", "ForceAllowCaveFlyers", "bool", "true", "Dinos & Taming"),
     ("gus", "[ServerSettings]", "DisableDinoDecayPvE", "bool", "false", "Dinos & Taming"),
