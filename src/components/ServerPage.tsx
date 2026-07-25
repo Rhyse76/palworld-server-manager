@@ -28,6 +28,7 @@ const COMMON_FLAGS: Record<string, { flag: string; desc: string }[]> = {
   "ark-sa": [
     { flag: "-NoBattlEye", desc: "Disables BattlEye anti-cheat." },
     { flag: "-servergamelog", desc: "Turns on extra server-side game logging." },
+    { flag: "-crossplay", desc: "Enables crossplay — pair with EnableCrossPlay and CrossplayPlatforms on the Config page." },
   ],
 };
 
