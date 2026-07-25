@@ -238,7 +238,10 @@ fn tick_profile(app: &AppHandle, cfg: &AppConfig, profile: &ServerProfile, t: u6
                 log("Server stopped unexpectedly — auto-restarting…");
                 discord::notify_for(app, &profile.game, discord::Event::Crashed);
                 match server::start_for(game, install_dir, cfg.hide_server_console, &profile.extra_launch_args) {
-                    Ok(()) => log("Crash watchdog: server restarted."),
+                    Ok(()) => {
+                        log("Crash watchdog: server restarted.");
+                        discord::notify_for(app, &profile.game, discord::Event::ServerStarted);
+                    }
                     Err(e) => log(&format!("Crash watchdog: restart failed: {e}")),
                 }
             }
@@ -304,7 +307,10 @@ pub fn run_restart_for(app: &AppHandle, profile: &ServerProfile, hide_console: b
     std::thread::sleep(Duration::from_secs(2));
 
     match server::start_for(game, install_dir, hide_console, &profile.extra_launch_args) {
-        Ok(()) => log("server started."),
+        Ok(()) => {
+            log("server started.");
+            discord::notify_for(app, &profile.game, discord::Event::ServerStarted);
+        }
         Err(e) => log(&format!("failed to start: {e}")),
     }
 }

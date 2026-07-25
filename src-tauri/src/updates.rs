@@ -16,7 +16,7 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::AppHandle;
 
-use crate::{game, server, settings, steamcmd};
+use crate::{discord, game, server, settings, steamcmd};
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -124,6 +124,7 @@ fn apply_impl(
 
     if was_running {
         server::start_for(game, install_dir, hide_console, extra_args)?;
+        discord::notify_for(app, game.spec().id, discord::Event::ServerStarted);
     }
     Ok(())
 }

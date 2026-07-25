@@ -136,19 +136,22 @@ fn start_server(app: AppHandle) -> Result<(), String> {
     server::start(&install_dir, settings::hide_console(&app), &profile.extra_launch_args)?;
     automation::set_supervise(&app, &profile.id, true);
     logs::record(&app, "Server started.");
-    discord::notify(&app, discord::Event::ServerStarted);
+    discord::notify_for(&app, &profile.game, discord::Event::ServerStarted);
     Ok(())
 }
 
 #[tauri::command]
 fn stop_server(app: AppHandle) -> Result<(), String> {
     // Mark intent first so the crash watchdog doesn't fight the stop.
-    if let Some(profile) = settings::active_profile(&app) {
-        automation::set_supervise(&app, &profile.id, false);
+    let profile = settings::active_profile(&app);
+    if let Some(p) = &profile {
+        automation::set_supervise(&app, &p.id, false);
     }
     server::stop()?;
     logs::record(&app, "Server stopped by user.");
-    discord::notify(&app, discord::Event::ServerStopped);
+    if let Some(p) = &profile {
+        discord::notify_for(&app, &p.game, discord::Event::ServerStopped);
+    }
     Ok(())
 }
 
@@ -163,7 +166,7 @@ fn restart_server(app: AppHandle) -> Result<(), String> {
         server::start(&install_dir, settings::hide_console(&app), &profile.extra_launch_args)?;
         automation::set_supervise(&app, &profile.id, true);
         logs::record(&app, "Server started.");
-        discord::notify(&app, discord::Event::ServerStarted);
+        discord::notify_for(&app, &profile.game, discord::Event::ServerStarted);
         return Ok(());
     }
     let hide = settings::hide_console(&app);
@@ -171,9 +174,12 @@ fn restart_server(app: AppHandle) -> Result<(), String> {
     automation::set_supervise(&app, &profile.id, false);
     let app2 = app.clone();
     std::thread::spawn(move || {
+        // run_restart_for sends its own per-profile ServerStarted notification on success,
+        // scoped to `profile.game` regardless of which profile is active in the UI by the
+        // time this background thread finishes — don't duplicate it here with the
+        // active-profile-dependent `discord::notify`.
         automation::run_restart_for(&app2, &profile, hide, 10, "Restart");
         automation::set_supervise(&app2, &profile.id, true);
-        discord::notify(&app2, discord::Event::ServerStarted);
     });
     Ok(())
 }
