@@ -8,7 +8,7 @@ use crate::config::ConfigField;
 
 use super::{Game, GameSpec, LiveControl, ModsKind};
 
-mod config;
+pub(crate) mod config;
 
 pub struct Palworld;
 

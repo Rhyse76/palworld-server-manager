@@ -12,6 +12,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::json;
 
 use crate::config;
+use crate::game::palworld::config as pal_config;
 
 const HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8212;
@@ -22,10 +23,18 @@ struct Conn {
     password: String,
 }
 
-/// Read REST connection details from the current config, with friendly errors
-/// telling the user exactly what to fix.
+/// Read REST connection details straight from *this* install dir's own Palworld
+/// config, not the ambiguous `crate::config::read` (which dispatches by whatever
+/// game is globally "active" in the UI, not by which game this directory actually
+/// belongs to). This module is only ever used for Palworld, but it used to go
+/// through that active-game dispatch anyway -- meaning REST calls for a
+/// backgrounded Palworld profile (player-watch, scheduled restarts' graceful
+/// shutdown, auto-update's pre-restart save) would silently read the *active*
+/// profile's config instead of this one's, and fail, whenever some other game was
+/// the one currently selected in the UI. Confirmed live: join/leave notifications
+/// only worked while Palworld itself was the active profile.
 fn conn(install_dir: &Path) -> Result<Conn, String> {
-    let fields = config::read(install_dir)?;
+    let fields = pal_config::read(install_dir)?;
 
     let enabled = config::find(&fields, "RESTAPIEnabled").as_deref() == Some("true");
     if !enabled {
@@ -212,7 +221,7 @@ pub struct EnableResult {
 /// ensure an Admin Password exists (generating one if empty). Requires a server
 /// restart to take effect.
 pub fn enable(install_dir: &Path) -> Result<EnableResult, String> {
-    let mut fields = config::read(install_dir).unwrap_or_default();
+    let mut fields = pal_config::read(install_dir).unwrap_or_default();
 
     config::upsert(&mut fields, "RESTAPIEnabled", "true", "bool");
 
@@ -231,7 +240,7 @@ pub fn enable(install_dir: &Path) -> Result<EnableResult, String> {
         existing
     };
 
-    config::write(install_dir, &fields)?;
+    pal_config::write(install_dir, &fields)?;
 
     Ok(EnableResult {
         port,
@@ -259,4 +268,44 @@ fn random_password() -> String {
             CHARS[(seed % CHARS.len() as u64) as usize] as char
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn enable_uses_palworlds_own_config_regardless_of_which_game_is_globally_active() {
+        // Regression test for a real bug, confirmed live: rest.rs used to go
+        // through the generic crate::config::read/write, which dispatches by
+        // whatever game is globally "active" in the UI, not by which game this
+        // install_dir actually belongs to. A backgrounded Palworld profile's
+        // REST-based features (join/leave notifications, scheduled restarts'
+        // graceful shutdown, auto-update's pre-restart save) silently failed
+        // whenever some other game was the one currently selected.
+        let dir = std::env::temp_dir().join(format!("palworld-rest-test-{}", std::process::id()));
+        let config_dir = dir.join("Pal/Saved/Config/WindowsServer");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let ini_path = config_dir.join("PalWorldSettings.ini");
+        std::fs::write(
+            &ini_path,
+            "[/Script/Pal.PalGameWorldSettings]\nOptionSettings=(Difficulty=None)\n",
+        )
+        .unwrap();
+
+        // Deliberately set a DIFFERENT game active before calling enable() -- the
+        // exact condition that broke it live.
+        crate::game::set_active("ark-sa");
+        let result = enable(&dir);
+        crate::game::set_active("palworld"); // restore, don't leak state into other tests
+
+        result.expect("enable() should succeed using Palworld's own config, not ARK's");
+
+        // The real proof: did it actually write into *this* dir's real
+        // PalWorldSettings.ini, not silently write ARK-formatted content
+        // elsewhere (or nowhere) because it was reading ARK's parser instead?
+        let written = std::fs::read_to_string(&ini_path).unwrap();
+        std::fs::remove_dir_all(&dir).ok();
+        assert!(written.contains("RESTAPIEnabled=True"), "wrote: {written}");
+    }
 }

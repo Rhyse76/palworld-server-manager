@@ -16,7 +16,7 @@ use crate::config::ConfigField;
 mod ark;
 mod enshrouded;
 pub mod live;
-mod palworld;
+pub(crate) mod palworld;
 
 /// Ids of all supported games, in display order (for the game picker).
 const IDS: &[&str] = &["palworld", "ark-sa", "enshrouded"];
