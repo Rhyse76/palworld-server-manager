@@ -79,18 +79,33 @@ fn extract_option_settings(text: &str) -> Option<String> {
     Some(line[open + 1..close].to_string())
 }
 
-/// Split on top-level commas (commas inside double quotes don't count).
+/// Split on top-level commas (commas inside double quotes, or inside a
+/// parenthesized sub-value like `CrossplayPlatforms=(Steam,Xbox,PS5)`, don't
+/// count). Missing the paren-depth tracking here used to silently shred any
+/// parenthesized list value at every internal comma -- only the fragment up to
+/// the first comma survived as a valid `key=value` pair (the rest had no `=`
+/// sign, so `parse_fields` dropped them), which looked like the value getting
+/// truncated on save when the real bug was here, in parsing.
 fn split_top_level(blob: &str) -> Vec<String> {
     let mut parts = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
+    let mut depth: i32 = 0;
     for c in blob.chars() {
         match c {
             '"' => {
                 in_quotes = !in_quotes;
                 current.push(c);
             }
-            ',' if !in_quotes => {
+            '(' if !in_quotes => {
+                depth += 1;
+                current.push(c);
+            }
+            ')' if !in_quotes => {
+                depth -= 1;
+                current.push(c);
+            }
+            ',' if !in_quotes && depth == 0 => {
                 parts.push(std::mem::take(&mut current));
             }
             _ => current.push(c),
@@ -179,5 +194,25 @@ mod tests {
         assert!(out.contains("ServerName=\"My, Server\""));
         assert!(out.contains("bIsPvP=False"));
         assert!(out.contains("PublicPort=8211"));
+    }
+
+    #[test]
+    fn preserves_a_parenthesized_list_value_with_internal_commas() {
+        // Real bug, reported live: CrossplayPlatforms=(Steam,Xbox,PS5) was being
+        // saved back as just "(Steam" because split_top_level didn't track paren
+        // depth, so every comma -- including the ones inside the list -- was
+        // treated as a boundary between separate key=value pairs.
+        let text = format!(
+            "{HEADER}\nOptionSettings=(Difficulty=None,CrossplayPlatforms=(Steam,Xbox,PS5),\
+             PublicPort=8211)\n"
+        );
+        let blob = extract_option_settings(&text).unwrap();
+        let fields = parse_fields(&blob);
+        assert_eq!(fields.len(), 3);
+        assert_eq!(fields[1].key, "CrossplayPlatforms");
+        assert_eq!(fields[1].value, "(Steam,Xbox,PS5)");
+
+        let out = serialize_fields(&fields);
+        assert!(out.contains("CrossplayPlatforms=(Steam,Xbox,PS5)"));
     }
 }
