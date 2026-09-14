@@ -17,9 +17,10 @@ mod ark;
 mod enshrouded;
 pub mod live;
 pub(crate) mod palworld;
+mod valheim;
 
 /// Ids of all supported games, in display order (for the game picker).
-const IDS: &[&str] = &["palworld", "ark-sa", "enshrouded"];
+const IDS: &[&str] = &["palworld", "ark-sa", "enshrouded", "valheim"];
 
 /// How a game exposes live control (players, kick/ban, announce) while running.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -108,6 +109,7 @@ pub fn by_id(id: &str) -> Option<&'static dyn Game> {
         "palworld" => Some(&palworld::Palworld),
         "ark-sa" => Some(&ark::ArkSurvivalAscended),
         "enshrouded" => Some(&enshrouded::Enshrouded),
+        "valheim" => Some(&valheim::Valheim),
         _ => None,
     }
 }
