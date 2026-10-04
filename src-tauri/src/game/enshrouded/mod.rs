@@ -30,6 +30,7 @@ static SPEC: GameSpec = GameSpec {
     mods: ModsKind::None, // no documented mod system for the dedicated server
     default_game_port: 15637,
     live_control: LiveControl::None,
+    exits_on_console_break: false,
 };
 
 impl Game for Enshrouded {

@@ -44,6 +44,9 @@ static SPEC: GameSpec = GameSpec {
     mods: ModsKind::None,
     default_game_port: 7777,
     live_control: LiveControl::None,
+    // Confirmed live: logs "Engine exit requested (reason: ConsoleCtrl RequestExit)"
+    // and is gone within ~2s. Plain Ctrl+C is ignored.
+    exits_on_console_break: true,
 };
 
 impl Game for Dragonwilds {

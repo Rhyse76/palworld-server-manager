@@ -39,6 +39,7 @@ static SPEC: GameSpec = GameSpec {
     },
     default_game_port: 7777,
     live_control: LiveControl::Rcon,
+    exits_on_console_break: false,
 };
 
 impl Game for ArkSurvivalAscended {

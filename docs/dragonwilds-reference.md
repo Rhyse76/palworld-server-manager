@@ -68,18 +68,25 @@ launch arguments".
 
 ## Stopping
 
-- A force kill (`taskkill /F /T`, what `server::stop` does) worked and the world loaded fine on
-  the next start, on an empty test world.
-- A **non-forced** `taskkill /T` on the same filter made the server log `Engine exit requested
-  (reason: ConsoleCtrl RequestExit)` and exit on its own within seconds — a real graceful
-  shutdown path. Not used by the app yet: `server::stop` is shared engine code and always
-  forces.
+The server shuts itself down on a console **Ctrl+Break**: it logs `Engine exit requested
+(reason: ConsoleCtrl RequestExit)` and is gone about 2 seconds later. `GameSpec.
+exits_on_console_break` is set for this game, so `server::stop_for` (manual stop, scheduled
+restart, auto-update, crash-watchdog paths all go through it) sends that first and force-kills
+only as a fallback. Verified live through `start_for`/`stop_for`, with both a visible and a
+hidden console.
+
+- Plain Ctrl+C is ignored by the server; a window close also triggers the exit request but
+  only works with a visible console.
+- **No save on exit was observed.** The log ends at the exit-request line and the `.sav`
+  timestamp did not change, on an empty world with no players. So this is the engine exiting
+  on its own terms rather than being cut off mid-write — not a guaranteed final save.
+- A plain force kill also left the (empty) test world loadable.
 
 ## Open items
 
-1. Start/stop/status through the app itself (only tested by launching the exe directly).
-2. Use the graceful close above for stop, scheduled restarts and auto-update instead of a hard
-   kill (cf. the ARK SQLite incident).
+1. A run through the app UI itself (engine start/stop/status are verified; the UI path is not).
+2. When the server actually writes its world save (autosave interval? on player events?), and
+   whether anything forces a save before a restart.
 3. Connect page / UPnP / firewall always use 7777 for this game — there is no config field to
    read a custom port from — and nothing forwards UDP 8888. Unknown whether 8888 must be
    reachable from outside.

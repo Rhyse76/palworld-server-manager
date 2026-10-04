@@ -78,6 +78,10 @@ pub struct GameSpec {
     pub default_game_port: u16,
     /// Live-control capability.
     pub live_control: LiveControl,
+    /// Whether the server shuts itself down when its console gets a Ctrl+Break. If
+    /// so, `server::stop_for` asks it to exit that way first and only force-kills
+    /// as a fallback — for games with no live-control shutdown command.
+    pub exits_on_console_break: bool,
 }
 
 /// A supported game. Static metadata via [`GameSpec`]; per-game behavior (config

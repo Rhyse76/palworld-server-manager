@@ -91,8 +91,48 @@ pub fn start(install_dir: &Path, hide_console: bool, extra_args: &str) -> Result
     start_for(game::active(), install_dir, hide_console, extra_args)
 }
 
-/// Force-stop every server process matching `spec` (launcher + shipping variant).
+/// PID of the running shipping server process for `spec`, if any.
+fn running_pid(spec: &game::GameSpec) -> Option<u32> {
+    let out = Command::new("tasklist")
+        .args(["/FI", spec.process_match, "/NH", "/FO", "CSV"])
+        .hidden()
+        .output()
+        .ok()?;
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .find(|l| l.contains(spec.process_marker))
+        .and_then(|l| l.split(',').nth(1))
+        .and_then(|pid| pid.trim_matches('"').parse().ok())
+}
+
+/// Ask the server to shut itself down by sending Ctrl+Break to its console, then
+/// wait (up to ~20s) for it to exit. The signal goes to every process attached to
+/// that console — including whoever sends it — so it's sent from a throwaway
+/// PowerShell helper that attaches to the server's console, never from this app.
+fn request_console_exit(spec: &game::GameSpec) {
+    let Some(pid) = running_pid(spec) else { return };
+    let script = format!(
+        "$k = Add-Type -Name K -Namespace W -PassThru -MemberDefinition '         [DllImport(\"kernel32.dll\")]public static extern bool FreeConsole();         [DllImport(\"kernel32.dll\")]public static extern bool AttachConsole(uint p);         [DllImport(\"kernel32.dll\")]public static extern bool GenerateConsoleCtrlEvent(uint e,uint g);';          [void]$k::FreeConsole();          if ($k::AttachConsole({pid})) {{ [void]$k::GenerateConsoleCtrlEvent(1, 0) }}"
+    );
+    let _ = Command::new("powershell")
+        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", &script])
+        .hidden()
+        .output();
+    for _ in 0..20 {
+        if !is_running_for(spec) {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+}
+
+/// Stop every server process matching `spec` (launcher + shipping variant). Games
+/// that exit on a console Ctrl+Break are asked to shut down first; the force-kill
+/// then only cleans up whatever is left.
 pub fn stop_for(spec: &game::GameSpec) -> Result<(), String> {
+    if spec.exits_on_console_break {
+        request_console_exit(spec);
+    }
     Command::new("taskkill")
         .args(["/F", "/T", "/FI", spec.process_match])
         .hidden()

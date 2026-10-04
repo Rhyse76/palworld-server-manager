@@ -25,6 +25,7 @@ static SPEC: GameSpec = GameSpec {
     mods: ModsKind::LocalFiles("Pal/Content/Paks/~mods"),
     default_game_port: 8211,
     live_control: LiveControl::RestApi,
+    exits_on_console_break: false,
 };
 
 impl Game for Palworld {
