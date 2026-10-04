@@ -1,5 +1,5 @@
-//! RuneScape: Dragonwilds adapter. **File layout verified against a real install
-//! (2026-10-04); not yet started live** — see `docs/dragonwilds-reference.md` for the per-field
+//! RuneScape: Dragonwilds adapter. **Verified against a real install and a live
+//! server run (2026-10-04)** — see `docs/dragonwilds-reference.md` for the per-field
 //! confidence breakdown and the open items a first live shakedown has to settle.
 //!
 //! Confirmed straight from Steam (`steamcmd +app_info_print 4019830`, 2026-10-04):
@@ -30,7 +30,7 @@ static SPEC: GameSpec = GameSpec {
     display_name: "RuneScape: Dragonwilds",
     steam_app_id: "4019830", // confirmed via steamcmd app_info_print
     server_launcher: "RSDragonwildsServer.exe", // confirmed via steamcmd app_info_print
-    // Confirmed from a real install: the launcher starts
+    // Confirmed live: the launcher starts
     // `RSDragonwilds/Binaries/Win64/RSDragonwildsServer-Win64-Shipping.exe`. Kept to
     // the `RSDragonwildsServer` prefix on purpose — a broader `RSDragonwilds*` would
     // also match (and `taskkill`) the game *client* running on the same PC.
@@ -53,7 +53,8 @@ impl Game for Dragonwilds {
 
     fn launch_args(&self, _install_dir: &Path) -> Vec<String> {
         // Jagex documents `-log -NewConsole`. We already give the server its own
-        // console (or a hidden one), so only `-log` is passed — same as ARK.
+        // console (or a hidden one), so only `-log` is passed — confirmed enough for
+        // a stable live run.
         vec!["-log".to_string()]
     }
 
