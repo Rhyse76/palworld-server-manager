@@ -365,6 +365,7 @@ mod tests {
     // assumption to revisit if a future test starts relying on it.
     #[test]
     fn full_read_write_round_trip_through_the_shared_config_path() {
+        let _guard = crate::game::ACTIVE_GAME_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         crate::game::set_active("enshrouded");
         let dir = std::env::temp_dir().join(format!("pwsm-enshrouded-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);

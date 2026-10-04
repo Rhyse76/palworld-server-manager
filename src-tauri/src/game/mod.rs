@@ -129,6 +129,11 @@ pub fn by_id_or_default(id: &str) -> &'static dyn Game {
 /// profile via `set_active` on startup and whenever the active profile changes.
 static ACTIVE_GAME: RwLock<String> = RwLock::new(String::new());
 
+/// Held by any test that changes the active game, so tests run in parallel can't
+/// flip it out from under each other.
+#[cfg(test)]
+pub(crate) static ACTIVE_GAME_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Point the engine at a game by id (falls back to Palworld if unknown/unset).
 pub fn set_active(id: &str) {
     if let Ok(mut g) = ACTIVE_GAME.write() {

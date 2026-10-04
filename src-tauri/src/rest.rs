@@ -295,6 +295,7 @@ mod tests {
 
         // Deliberately set a DIFFERENT game active before calling enable() -- the
         // exact condition that broke it live.
+        let _guard = crate::game::ACTIVE_GAME_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         crate::game::set_active("ark-sa");
         let result = enable(&dir);
         crate::game::set_active("palworld"); // restore, don't leak state into other tests
