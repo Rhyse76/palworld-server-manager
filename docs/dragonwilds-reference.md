@@ -84,10 +84,10 @@ hidden console.
 
 ## Open items
 
-1. Config edit + Start through the app UI are confirmed (2026-10-04). Still unconfirmed: a player actually joining an app-started server (the test box had no port forward).
+1. ~~A run through the app UI~~ — confirmed end to end (2026-10-04): an existing live server was connected by folder, updated and started through the app, and a Switch 2 player joined it (crossplay).
+   - Updating an install made by a *different* SteamCMD fails with `state is 0x6` / `Failed to get manifest request code, 'Access Denied'`: Steam won't give anonymous logins the old manifest needed for a delta update, and the app's SteamCMD has no cached copy. Workaround: delete `<install>/steamapps/appmanifest_4019830.acf` and update again (re-verifies everything). Not game-specific; the app doesn't recover from this automatically yet.
 2. Autosave is **every 5 minutes** (confirmed in the log, with no players on), keeping the previous file as `<world>.sav.backup`. A stop or restart can therefore lose up to 5 minutes; nothing known forces a save first.
 3. Connect page / UPnP / firewall always use 7777 for this game — there is no config field to
-   read a custom port from — and nothing forwards UDP 8888. Unknown whether 8888 must be
-   reachable from outside.
+   read a custom port from. UDP 8888 does **not** need forwarding (live server works with only 7777).
 4. Allowed values for `PlatformPolicy`.
 5. Player cap is 6 (logged at startup); not configurable in the ini.
