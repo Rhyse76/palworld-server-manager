@@ -1,5 +1,5 @@
-//! RuneScape: Dragonwilds adapter. **Scaffolded from documentation, not yet verified
-//! against a real install** — see `docs/dragonwilds-reference.md` for the per-field
+//! RuneScape: Dragonwilds adapter. **File layout verified against a real install
+//! (2026-10-04); not yet started live** — see `docs/dragonwilds-reference.md` for the per-field
 //! confidence breakdown and the open items a first live shakedown has to settle.
 //!
 //! Confirmed straight from Steam (`steamcmd +app_info_print 4019830`, 2026-10-04):
@@ -30,11 +30,14 @@ static SPEC: GameSpec = GameSpec {
     display_name: "RuneScape: Dragonwilds",
     steam_app_id: "4019830", // confirmed via steamcmd app_info_print
     server_launcher: "RSDragonwildsServer.exe", // confirmed via steamcmd app_info_print
-    // UNVERIFIED: assumes the usual Unreal `<Target>-Win64-Shipping.exe` child. Kept
-    // to the `RSDragonwildsServer` prefix on purpose — a broader `RSDragonwilds*`
-    // would also match (and `taskkill`) the game *client* running on the same PC.
+    // Confirmed from a real install: the launcher starts
+    // `RSDragonwilds/Binaries/Win64/RSDragonwildsServer-Win64-Shipping.exe`. Kept to
+    // the `RSDragonwildsServer` prefix on purpose — a broader `RSDragonwilds*` would
+    // also match (and `taskkill`) the game *client* running on the same PC.
     process_match: "IMAGENAME eq RSDragonwildsServer*",
-    process_marker: "RSDragonwildsServer",
+    // Not "Shipping": `tasklist` cuts image names off at 25 characters, which for
+    // this exe is exactly `RSDragonwildsServer-Win64`. Still excludes the launcher.
+    process_marker: "RSDragonwildsServer-Win64",
     config_rel: "RSDragonwilds/Saved/Config/WindowsServer/DedicatedServer.ini",
     default_config: None,
     saves_rel: "RSDragonwilds/Saved/SaveGames",

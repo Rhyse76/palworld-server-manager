@@ -1,6 +1,6 @@
 # RuneScape: Dragonwilds — dedicated server reference
 
-**Scaffolded from documentation (2026-10-04), not yet verified against a real install.**
+**File layout verified against a real install (2026-10-04, 4.7 GB); the server has not been started yet**, so anything that only exists after a first run is still from documentation.
 Sources: Steam's own app metadata (`steamcmd +app_info_print 4019830`), Jagex's
 [dedicated servers how-to](https://dragonwilds.runescape.com/news/how-to-dedicated-servers),
 the [official wiki](https://dragonwilds.runescape.wiki/w/Dedicated_Servers), and hosting-
@@ -12,7 +12,7 @@ provider guides for the literal ini text.
 |---|---|---|
 | `steam_app_id` | `4019830` ("RuneScape: Dragonwilds Dedicated Server", free tool, anonymous login) | confirmed — Steam app metadata |
 | `server_launcher` | `RSDragonwildsServer.exe` (install root) | confirmed — Steam app metadata's Windows launch entry. Jagex's how-to says `RSDragonwilds.exe`; Steam's own launch config wins. |
-| `process_match` / `process_marker` | `IMAGENAME eq RSDragonwildsServer*` / `RSDragonwildsServer` | **unverified** — assumes the usual Unreal `RSDragonwildsServer-Win64-Shipping.exe` child. Deliberately not `RSDragonwilds*`: that would also match, and force-stop, the game client on the same PC. |
+| `process_match` / `process_marker` | `IMAGENAME eq RSDragonwildsServer*` / `RSDragonwildsServer-Win64` | exe name confirmed on disk (`RSDragonwilds/Binaries/Win64/RSDragonwildsServer-Win64-Shipping.exe`); detection itself not yet exercised live. Deliberately not `RSDragonwilds*`: that would also match, and force-stop, the game client on the same PC. The marker is the name as `tasklist` prints it — it truncates image names to 25 characters, so `Shipping` never appears. |
 | `config_rel` | `RSDragonwilds/Saved/Config/WindowsServer/DedicatedServer.ini` | documented (Jagex) |
 | `saves_rel` | `RSDragonwilds/Saved/SaveGames` | documented (Jagex: the server loads the latest `.sav` there), but the wiki also lists `%LOCALAPPDATA%\RSDragonwilds\Saved\Savegames` — likely the client's path, **needs checking** |
 | `default_game_port` | `7777` UDP | documented |
@@ -57,10 +57,10 @@ launch arguments".
 
 ## Open items for the first live shakedown
 
-1. Real running process name (does `RSDragonwildsServer*` + `tasklist` see it? does stop work?).
+1. Confirm start/stop/status actually work against the running process.
 2. Where saves actually land on Windows (install dir vs `%LOCALAPPDATA%`) — decides whether
    backups work as-is.
-3. Whether the server ships/generates `DedicatedServer.ini` itself, and its exact contents.
+3. A fresh install ships **no** `DedicatedServer.ini` and no `RSDragonwilds/Saved` folder at all (confirmed). Check what the server generates on first run and whether it matches the layout above.
 4. Whether `-NewConsole` is needed for a stable console (Palworld's console build crashed
    without a real console).
 5. Connect page / UPnP / firewall always use 7777 for this game — there is no config field to
