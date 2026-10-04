@@ -84,9 +84,8 @@ hidden console.
 
 ## Open items
 
-1. A run through the app UI itself (engine start/stop/status are verified; the UI path is not).
-2. When the server actually writes its world save (autosave interval? on player events?), and
-   whether anything forces a save before a restart.
+1. Config edit + Start through the app UI are confirmed (2026-10-04). Still unconfirmed: a player actually joining an app-started server (the test box had no port forward).
+2. Autosave is **every 5 minutes** (confirmed in the log, with no players on), keeping the previous file as `<world>.sav.backup`. A stop or restart can therefore lose up to 5 minutes; nothing known forces a save first.
 3. Connect page / UPnP / firewall always use 7777 for this game — there is no config field to
    read a custom port from — and nothing forwards UDP 8888. Unknown whether 8888 must be
    reachable from outside.
