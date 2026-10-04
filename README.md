@@ -2,13 +2,14 @@
 
 A clean, modern, all-in-one desktop app for running your own dedicated game server on
 Windows — install, configure, monitor, back up, and automate it, all from one window.
-Supports **Palworld**, **ARK: Survival Ascended**, and **Enshrouded**, with more games planned.
+Supports **Palworld**, **ARK: Survival Ascended**, **Enshrouded**, and **RuneScape: Dragonwilds**,
+with more games planned.
 
 **➡️ Download & screenshots: [rhysegaming.com/palworld](https://rhysegaming.com/palworld)**
 
 > Unofficial, community-made tool. Not affiliated with or endorsed by Pocketpair, Inc.,
-> Studio Wildcard, or Keen Games GmbH. "Palworld," "ARK: Survival Ascended," and
-> "Enshrouded" are trademarks of their respective owners.
+> Studio Wildcard, Keen Games GmbH, or Jagex Ltd. "Palworld," "ARK: Survival Ascended,"
+> "Enshrouded," and "RuneScape: Dragonwilds" are trademarks of their respective owners.
 
 ## Features
 
@@ -17,8 +18,8 @@ Supports **Palworld**, **ARK: Survival Ascended**, and **Enshrouded**, with more
 - **Full config editor** — every setting as friendly toggles and inputs, with search.
   Import/export presets.
 - **Live dashboard** — online players, kick/ban, broadcast, graceful shutdown — via REST
-  (Palworld) or RCON (ARK: Survival Ascended), one-click enable. (Enshrouded has no live
-  control protocol of its own, so this doesn't apply there.)
+  (Palworld) or RCON (ARK: Survival Ascended), one-click enable. (Enshrouded and RuneScape:
+  Dragonwilds have no live control protocol of their own, so this doesn't apply there.)
 - **Mods** — manage local `.pak` mods (Palworld) or a CurseForge mod-id list (ARK: Survival
   Ascended).
 - **Backups & restore** — one-click zipped snapshots of the world save; restore anytime.
