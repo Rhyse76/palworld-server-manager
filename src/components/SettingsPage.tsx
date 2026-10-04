@@ -254,10 +254,10 @@ export default function SettingsPage({ config, refresh, notify }: Props) {
         </p>
         <p style={{ color: "var(--text-dim)", marginTop: 0 }}>
           An unofficial, community-made tool for running dedicated servers for Palworld,
-          ARK: Survival Ascended, and Enshrouded. Not affiliated with or endorsed by
-          Pocketpair, Inc., Studio Wildcard, or Keen Games GmbH. “Palworld,”
-          “ARK: Survival Ascended,” and “Enshrouded” are trademarks of their respective
-          owners.
+          ARK: Survival Ascended, Enshrouded, and RuneScape: Dragonwilds. Not affiliated
+          with or endorsed by Pocketpair, Inc., Studio Wildcard, Keen Games GmbH, or
+          Jagex Ltd. “Palworld,” “ARK: Survival Ascended,” “Enshrouded,” and “RuneScape:
+          Dragonwilds” are trademarks of their respective owners.
         </p>
         <p style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 0 }}>
           © 2026 PatchWork Labs, LLC.

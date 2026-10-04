@@ -55,6 +55,8 @@ fn folder_name_guesses() -> Vec<&'static str> {
     match crate::game::active().spec().id {
         "ark-sa" => vec!["ArkSurvivalAscendedServer", "ARK Survival Ascended Dedicated Server", "ArkAscended"],
         "enshrouded" => vec!["EnshroudedServer", "Enshrouded"],
+        // First entry is the folder name Steam itself records for app 4019830.
+        "dragonwilds" => vec!["RuneScape Dragonwilds Dedicated Server", "DragonwildsServer", "Dragonwilds"],
         _ => vec!["PalworldServer", "Palworld", "PalServer", "PalworldDedicatedServer"],
     }
 }

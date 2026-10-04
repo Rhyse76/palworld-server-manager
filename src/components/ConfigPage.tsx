@@ -14,7 +14,9 @@ interface Props {
 // (game behavior, not an app bug). Safe order: stop the server, edit, then start
 // again. Not yet confirmed either way for Enshrouded, so it's excluded below
 // rather than assumed affected.
-const GAMES_WITH_LIVE_EDIT_RISK = ["ark-sa", "palworld"];
+// Dragonwilds is listed on Jagex's own word (their dedicated-server guide says
+// changes made while the server runs are lost), not a live test.
+const GAMES_WITH_LIVE_EDIT_RISK = ["ark-sa", "palworld", "dragonwilds"];
 const LIVE_EDIT_WARNING =
   "The server is running. This game rewrites its config file from memory when it shuts down, which silently discards any changes made here. Stop the server first, make your changes, then start it again.";
 
