@@ -120,13 +120,15 @@ fn apply_impl(
     }
 
     let steamcmd = tauri::async_runtime::block_on(steamcmd::ensure_steamcmd(app))?;
-    steamcmd::run_update_for(app, &steamcmd, &install_dir.to_path_buf(), spec.steam_app_id)?;
+    let updated = steamcmd::run_update_for(app, &steamcmd, &install_dir.to_path_buf(), spec.steam_app_id);
 
+    // Bring the server back even if the update failed — a failed update must not
+    // leave a server that was running switched off.
     if was_running {
         server::start_for(game, install_dir, hide_console, extra_args)?;
         discord::notify_for(app, game.spec().id, discord::Event::ServerStarted);
     }
-    Ok(())
+    updated
 }
 
 pub fn apply_for(app: &AppHandle, profile: &settings::ServerProfile, hide_console: bool) -> Result<(), String> {
